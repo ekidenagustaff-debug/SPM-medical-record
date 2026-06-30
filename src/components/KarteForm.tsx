@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { KarteFormData } from "@/types/karte";
 
 interface KarteFormProps {
@@ -13,13 +13,29 @@ const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overal
 
 export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormProps) {
   const [form, setForm] = useState(EMPTY);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [trainerOptions, setTrainerOptions] = useState<string[]>([]);
+  const [tagOptions, setTagOptions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    fetch("/api/trainers").then((r) => r.json()).then(setTrainerOptions).catch(() => {});
+    fetch("/api/tags").then((r) => r.json()).then(setTagOptions).catch(() => {});
+  }, []);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError(null);
+  };
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,8 +44,14 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
     setSaving(true);
     setError(null);
     try {
-      await onSubmit({ teamName, clientName: playerName, ...form });
+      await onSubmit({
+        teamName,
+        clientName: playerName,
+        ...form,
+        tags: selectedTags,
+      });
       setForm(EMPTY);
+      setSelectedTags([]);
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
     } catch {
@@ -41,20 +63,49 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
+      {/* 担当トレーナー名 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           担当トレーナー名 <span className="text-red-400">*</span>
         </label>
-        <input
+        <select
           name="trainerName"
           value={form.trainerName}
           onChange={handleChange}
           required
-          placeholder="鈴木 一郎"
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
-        />
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white text-gray-800"
+        >
+          <option value="">トレーナーを選択...</option>
+          {trainerOptions.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
       </div>
 
+      {/* タグ */}
+      {tagOptions.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
+          <div className="flex flex-wrap gap-1.5">
+            {tagOptions.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                  selectedTags.includes(tag)
+                    ? "bg-blue-600 text-white border-blue-600 font-medium"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-blue-300 hover:text-blue-500"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 主訴 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">主訴</label>
         <textarea
@@ -67,8 +118,11 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
         />
       </div>
 
+      {/* トレーニング内容 */}
       <div className="flex flex-col gap-1 flex-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">トレーニング内容</label>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          トレーニング内容
+        </label>
         <textarea
           name="trainingContent"
           value={form.trainingContent}
@@ -79,6 +133,7 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
         />
       </div>
 
+      {/* 総評 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
         <textarea
@@ -105,8 +160,12 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
         {saving ? "保存中..." : "カルテを保存する"}
       </button>
 
-      {submitted && <p className="text-center text-sm text-green-600 font-medium -mt-2">✓ Notionに保存しました</p>}
-      {error && <p className="text-center text-sm text-red-500 font-medium -mt-2">{error}</p>}
+      {submitted && (
+        <p className="text-center text-sm text-green-600 font-medium -mt-2">✓ Notionに保存しました</p>
+      )}
+      {error && (
+        <p className="text-center text-sm text-red-500 font-medium -mt-2">{error}</p>
+      )}
     </form>
   );
 }

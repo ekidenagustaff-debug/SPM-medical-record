@@ -22,7 +22,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { teamName, clientName, trainerName, chiefComplaint, trainingContent, overallAssessment } = body;
+    const {
+      teamName,
+      clientName,
+      trainerName,
+      chiefComplaint,
+      trainingContent,
+      overallAssessment,
+      tags,
+    } = body;
 
     if (!teamName?.trim() || !clientName?.trim() || !trainerName?.trim()) {
       return NextResponse.json(
@@ -38,6 +46,7 @@ export async function POST(req: NextRequest) {
       chiefComplaint: chiefComplaint ?? "",
       trainingContent: trainingContent ?? "",
       overallAssessment: overallAssessment ?? "",
+      tags: Array.isArray(tags) ? tags : [],
     });
 
     return NextResponse.json(record, { status: 201 });

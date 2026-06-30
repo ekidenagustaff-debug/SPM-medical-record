@@ -45,6 +45,19 @@ export default function KarteCard({ record, index }: KarteCardProps) {
         </div>
       </div>
 
+      {record.tags && record.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {record.tags.map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {record.chiefComplaint && (
         <div className="mb-2">
           <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>

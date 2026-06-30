@@ -6,6 +6,7 @@ export interface KarteRecord {
   chiefComplaint: string;
   trainingContent: string;
   overallAssessment: string;
+  tags: string[];
   createdAt: string;
 }
 

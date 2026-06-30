@@ -4,38 +4,36 @@ import { useState } from "react";
 import { KarteFormData } from "@/types/karte";
 
 interface KarteFormProps {
+  teamName: string;
+  playerName: string;
   onSubmit: (data: KarteFormData) => Promise<void>;
 }
 
-const EMPTY_FORM: KarteFormData = {
-  clientName: "",
-  trainerName: "",
-  chiefComplaint: "",
-  trainingContent: "",
-  overallAssessment: "",
-};
+const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overallAssessment: "" };
 
-export default function KarteForm({ onSubmit }: KarteFormProps) {
-  const [form, setForm] = useState<KarteFormData>(EMPTY_FORM);
+export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormProps) {
+  const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.clientName.trim() || !form.trainerName.trim()) return;
+    if (!form.trainerName.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      await onSubmit(form);
-      setForm(EMPTY_FORM);
+      await onSubmit({
+        teamName,
+        clientName: playerName,
+        ...form,
+      });
+      setForm(EMPTY);
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
     } catch {
@@ -47,39 +45,22 @@ export default function KarteForm({ onSubmit }: KarteFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            クライアント名 <span className="text-red-400">*</span>
-          </label>
-          <input
-            name="clientName"
-            value={form.clientName}
-            onChange={handleChange}
-            required
-            placeholder="山田 太郎"
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            担当トレーナー名 <span className="text-red-400">*</span>
-          </label>
-          <input
-            name="trainerName"
-            value={form.trainerName}
-            onChange={handleChange}
-            required
-            placeholder="鈴木 一郎"
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
-          />
-        </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          担当トレーナー名 <span className="text-red-400">*</span>
+        </label>
+        <input
+          name="trainerName"
+          value={form.trainerName}
+          onChange={handleChange}
+          required
+          placeholder="鈴木 一郎"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
+        />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          主訴
-        </label>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">主訴</label>
         <textarea
           name="chiefComplaint"
           value={form.chiefComplaint}
@@ -98,16 +79,14 @@ export default function KarteForm({ onSubmit }: KarteFormProps) {
           name="trainingContent"
           value={form.trainingContent}
           onChange={handleChange}
-          rows={6}
+          rows={7}
           placeholder="実施したメニュー、セット数、重量、フォームのポイントなど..."
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none flex-1"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          総評
-        </label>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
         <textarea
           name="overallAssessment"
           value={form.overallAssessment}
@@ -133,9 +112,7 @@ export default function KarteForm({ onSubmit }: KarteFormProps) {
       </button>
 
       {submitted && (
-        <p className="text-center text-sm text-green-600 font-medium -mt-2">
-          ✓ Notionに保存しました
-        </p>
+        <p className="text-center text-sm text-green-600 font-medium -mt-2">✓ Notionに保存しました</p>
       )}
       {error && (
         <p className="text-center text-sm text-red-500 font-medium -mt-2">{error}</p>

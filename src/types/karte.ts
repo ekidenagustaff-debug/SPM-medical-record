@@ -1,5 +1,6 @@
 export interface KarteRecord {
   id: string;
+  teamName: string;
   clientName: string;
   trainerName: string;
   chiefComplaint: string;
@@ -9,3 +10,14 @@ export interface KarteRecord {
 }
 
 export type KarteFormData = Omit<KarteRecord, "id" | "createdAt">;
+
+export interface TeamInfo {
+  name: string;
+  playerCount: number;
+}
+
+export interface PlayerInfo {
+  name: string;
+  karteCount: number;
+  lastKarte: string | null;
+}

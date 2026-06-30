@@ -45,6 +45,24 @@ export default function KarteCard({ record, index }: KarteCardProps) {
         </div>
       </div>
 
+      {record.trainingContent && (
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
+          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
+            {record.trainingContent}
+          </p>
+        </div>
+      )}
+
+      {record.overallAssessment && (
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
+          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+            {record.overallAssessment}
+          </p>
+        </div>
+      )}
+
       {record.tags && record.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
           {record.tags.map((tag) => (
@@ -63,24 +81,6 @@ export default function KarteCard({ record, index }: KarteCardProps) {
           <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
           <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
             {record.chiefComplaint}
-          </p>
-        </div>
-      )}
-
-      {record.trainingContent && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
-            {record.trainingContent}
-          </p>
-        </div>
-      )}
-
-      {record.overallAssessment && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-            {record.overallAssessment}
           </p>
         </div>
       )}

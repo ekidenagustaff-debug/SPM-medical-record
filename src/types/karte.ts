@@ -7,6 +7,7 @@ export interface KarteRecord {
   trainingContent: string;
   overallAssessment: string;
   tags: string[];
+  mediaUrls: string[];
   createdAt: string;
 }
 

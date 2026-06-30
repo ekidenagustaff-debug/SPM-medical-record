@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       trainingContent,
       overallAssessment,
       tags,
+      mediaUrls,
     } = body;
 
     if (!teamName?.trim() || !clientName?.trim() || !trainerName?.trim()) {
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
       trainingContent: trainingContent ?? "",
       overallAssessment: overallAssessment ?? "",
       tags: Array.isArray(tags) ? tags : [],
+      mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
     });
 
     return NextResponse.json(record, { status: 201 });

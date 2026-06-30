@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client";
-import { KarteRecord, KarteFormData } from "@/types/karte";
+import { KarteRecord, KarteFormData, TeamInfo, PlayerInfo } from "@/types/karte";
 import { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
@@ -9,17 +9,24 @@ function richText(value: string) {
   return [{ text: { content: value } }];
 }
 
-function extractRichText(prop: PageObjectResponse["properties"][string]): string {
-  if (prop.type === "rich_text") {
-    return prop.rich_text.map((t) => t.plain_text).join("");
-  }
-  if (prop.type === "title") {
-    return prop.title.map((t) => t.plain_text).join("");
-  }
-  if (prop.type === "created_time") {
-    return prop.created_time;
-  }
+function extractText(prop: PageObjectResponse["properties"][string]): string {
+  if (prop.type === "rich_text") return prop.rich_text.map((t) => t.plain_text).join("");
+  if (prop.type === "title") return prop.title.map((t) => t.plain_text).join("");
   return "";
+}
+
+function pageToKarte(page: PageObjectResponse): KarteRecord {
+  const p = page.properties;
+  return {
+    id: page.id,
+    teamName: p["チーム名"] ? extractText(p["チーム名"]) : "",
+    clientName: extractText(p["クライアント名"]),
+    trainerName: extractText(p["担当トレーナー名"]),
+    chiefComplaint: extractText(p["主訴"]),
+    trainingContent: extractText(p["トレーニング内容"]),
+    overallAssessment: extractText(p["総評"]),
+    createdAt: page.created_time,
+  };
 }
 
 export async function createKarteRecord(data: KarteFormData): Promise<KarteRecord> {
@@ -31,31 +38,75 @@ export async function createKarteRecord(data: KarteFormData): Promise<KarteRecor
       主訴: { rich_text: richText(data.chiefComplaint) },
       トレーニング内容: { rich_text: richText(data.trainingContent) },
       総評: { rich_text: richText(data.overallAssessment) },
+      チーム名: { rich_text: richText(data.teamName) },
     },
   }) as PageObjectResponse;
-
   return pageToKarte(response);
 }
 
-export async function getRecentKarteRecords(limit = 10): Promise<KarteRecord[]> {
+export async function getKartesByPlayer(
+  teamName: string,
+  playerName: string,
+  limit = 10
+): Promise<KarteRecord[]> {
   const response = await notion.databases.query({
     database_id: DATABASE_ID,
+    filter: {
+      and: [
+        { property: "チーム名", rich_text: { equals: teamName } },
+        { property: "クライアント名", title: { equals: playerName } },
+      ],
+    },
     sorts: [{ timestamp: "created_time", direction: "descending" }],
     page_size: limit,
   });
-
   return (response.results as PageObjectResponse[]).map(pageToKarte);
 }
 
-function pageToKarte(page: PageObjectResponse): KarteRecord {
-  const p = page.properties;
-  return {
-    id: page.id,
-    clientName: extractRichText(p["クライアント名"]),
-    trainerName: extractRichText(p["担当トレーナー名"]),
-    chiefComplaint: extractRichText(p["主訴"]),
-    trainingContent: extractRichText(p["トレーニング内容"]),
-    overallAssessment: extractRichText(p["総評"]),
-    createdAt: page.created_time,
-  };
+export async function getTeams(): Promise<TeamInfo[]> {
+  const teamMap = new Map<string, Set<string>>();
+  let cursor: string | undefined;
+
+  do {
+    const response = await notion.databases.query({
+      database_id: DATABASE_ID,
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    for (const page of response.results as PageObjectResponse[]) {
+      const team = extractText(page.properties["チーム名"]);
+      const player = extractText(page.properties["クライアント名"]);
+      if (!team) continue;
+      if (!teamMap.has(team)) teamMap.set(team, new Set());
+      if (player) teamMap.get(team)!.add(player);
+    }
+    cursor = response.has_more ? (response.next_cursor ?? undefined) : undefined;
+  } while (cursor);
+
+  return Array.from(teamMap.entries())
+    .map(([name, players]) => ({ name, playerCount: players.size }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+}
+
+export async function getPlayersByTeam(teamName: string): Promise<PlayerInfo[]> {
+  const response = await notion.databases.query({
+    database_id: DATABASE_ID,
+    filter: { property: "チーム名", rich_text: { equals: teamName } },
+    sorts: [{ timestamp: "created_time", direction: "descending" }],
+    page_size: 100,
+  });
+
+  const playerMap = new Map<string, { karteCount: number; lastKarte: string }>();
+  for (const page of response.results as PageObjectResponse[]) {
+    const player = extractText(page.properties["クライアント名"]);
+    if (!player) continue;
+    if (!playerMap.has(player)) {
+      playerMap.set(player, { karteCount: 0, lastKarte: page.created_time });
+    }
+    playerMap.get(player)!.karteCount++;
+  }
+
+  return Array.from(playerMap.entries())
+    .map(([name, { karteCount, lastKarte }]) => ({ name, karteCount, lastKarte }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
 }

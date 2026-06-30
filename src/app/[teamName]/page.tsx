@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { TeamInfo } from "@/types/karte";
+import { PlayerInfo } from "@/types/karte";
 
 function Spinner() {
   return (
@@ -14,23 +14,29 @@ function Spinner() {
   );
 }
 
-export default function TeamListPage() {
-  const [teams, setTeams] = useState<TeamInfo[]>([]);
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ja-JP", { month: "long", day: "numeric" });
+}
+
+export default function PlayerListPage() {
+  const params = useParams();
+  const teamName = decodeURIComponent(params.teamName as string);
+  const [players, setPlayers] = useState<PlayerInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newTeam, setNewTeam] = useState("");
+  const [newPlayer, setNewPlayer] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/teams")
+    fetch(`/api/teams/${encodeURIComponent(teamName)}/players`)
       .then((r) => r.json())
-      .then(setTeams)
+      .then(setPlayers)
       .finally(() => setLoading(false));
-  }, []);
+  }, [teamName]);
 
-  const handleAddTeam = (e: React.FormEvent) => {
+  const handleAddPlayer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeam.trim()) return;
-    router.push(`/${encodeURIComponent(newTeam.trim())}`);
+    if (!newPlayer.trim()) return;
+    router.push(`/${encodeURIComponent(teamName)}/${encodeURIComponent(newPlayer.trim())}`);
   };
 
   return (
@@ -44,38 +50,51 @@ export default function TeamListPage() {
       </header>
 
       <main className="max-w-lg mx-auto w-full px-6 py-8">
-        <h2 className="text-lg font-bold text-gray-800 mb-5">チーム一覧</h2>
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-5">
+          <Link href="/" className="hover:text-blue-500 transition-colors">チーム一覧</Link>
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-gray-700 font-medium">{teamName}</span>
+        </div>
+
+        <h2 className="text-lg font-bold text-gray-800 mb-5">選手一覧</h2>
 
         {loading ? (
           <div className="flex justify-center py-12"><Spinner /></div>
         ) : (
           <div className="flex flex-col gap-3 mb-6">
-            {teams.map((team) => (
+            {players.map((player) => (
               <Link
-                key={team.name}
-                href={`/${encodeURIComponent(team.name)}`}
+                key={player.name}
+                href={`/${encodeURIComponent(teamName)}/${encodeURIComponent(player.name)}`}
                 className="bg-white border border-gray-100 rounded-xl px-5 py-4 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group"
               >
                 <div>
-                  <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{team.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{team.playerCount}名</p>
+                  <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{player.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {player.karteCount}件
+                    {player.lastKarte && ` ・ 最終: ${formatDate(player.lastKarte)}`}
+                  </p>
                 </div>
                 <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
             ))}
-            {teams.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-8">チームはまだありません。下から追加してください。</p>
+            {players.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-8">
+                このチームに選手はまだいません。下から追加してください。
+              </p>
             )}
           </div>
         )}
 
-        <form onSubmit={handleAddTeam} className="flex gap-2">
+        <form onSubmit={handleAddPlayer} className="flex gap-2">
           <input
-            value={newTeam}
-            onChange={(e) => setNewTeam(e.target.value)}
-            placeholder="新しいチーム名を入力..."
+            value={newPlayer}
+            onChange={(e) => setNewPlayer(e.target.value)}
+            placeholder="新しい選手名を入力..."
             className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
           />
           <button

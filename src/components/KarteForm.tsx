@@ -148,34 +148,6 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
         </select>
       </div>
 
-      {/* トレーニング内容 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          トレーニング内容
-        </label>
-        <textarea
-          name="trainingContent"
-          value={form.trainingContent}
-          onChange={handleChange}
-          rows={5}
-          placeholder="実施したメニュー、セット数、重量、フォームのポイントなど..."
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
-        />
-      </div>
-
-      {/* 総評 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
-        <textarea
-          name="overallAssessment"
-          value={form.overallAssessment}
-          onChange={handleChange}
-          rows={3}
-          placeholder="今日のセッション全体の評価、次回へのメモなど..."
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
-        />
-      </div>
-
       {/* タグ */}
       {tagOptions.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -208,6 +180,34 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
           onChange={handleChange}
           rows={2}
           placeholder="今日の体調や気になる箇所、目標など..."
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+        />
+      </div>
+
+      {/* トレーニング内容 */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          トレーニング内容
+        </label>
+        <textarea
+          name="trainingContent"
+          value={form.trainingContent}
+          onChange={handleChange}
+          rows={5}
+          placeholder="実施したメニュー、セット数、重量、フォームのポイントなど..."
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+        />
+      </div>
+
+      {/* 総評 */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
+        <textarea
+          name="overallAssessment"
+          value={form.overallAssessment}
+          onChange={handleChange}
+          rows={3}
+          placeholder="今日のセッション全体の評価、次回へのメモなど..."
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
         />
       </div>

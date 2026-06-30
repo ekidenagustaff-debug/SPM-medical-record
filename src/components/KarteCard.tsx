@@ -34,6 +34,7 @@ export default function KarteCard({ record, index }: KarteCardProps) {
         </div>
       </div>
 
+      {/* クライアント / 担当トレーナー */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div>
           <p className="text-xs text-gray-400 mb-0.5">クライアント</p>
@@ -45,46 +46,62 @@ export default function KarteCard({ record, index }: KarteCardProps) {
         </div>
       </div>
 
-      {record.trainingContent && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
-            {record.trainingContent}
-          </p>
+      {/* タグ / トレーニング内容 */}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          {record.tags && record.tags.length > 0 ? (
+            <>
+              <p className="text-xs font-semibold text-gray-500 mb-1">タグ</p>
+              <div className="flex flex-wrap gap-1">
+                {record.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
-      )}
-
-      {record.overallAssessment && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-            {record.overallAssessment}
-          </p>
+        <div>
+          {record.trainingContent ? (
+            <>
+              <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
+                {record.trainingContent}
+              </p>
+            </>
+          ) : null}
         </div>
-      )}
+      </div>
 
-      {record.tags && record.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {record.tags.map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
-            >
-              {tag}
-            </span>
-          ))}
+      {/* 主訴 / 総評 */}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          {record.chiefComplaint ? (
+            <>
+              <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+                {record.chiefComplaint}
+              </p>
+            </>
+          ) : null}
         </div>
-      )}
-
-      {record.chiefComplaint && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-            {record.chiefComplaint}
-          </p>
+        <div>
+          {record.overallAssessment ? (
+            <>
+              <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+                {record.overallAssessment}
+              </p>
+            </>
+          ) : null}
         </div>
-      )}
+      </div>
 
+      {/* 写真・動画 */}
       {record.mediaUrls && record.mediaUrls.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">
           {record.mediaUrls.map((url, i) => {

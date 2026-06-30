@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { KarteFormData, KarteRecord } from "@/types/karte";
-import { saveRecord, getRecentRecords } from "@/lib/storage";
 import KarteForm from "@/components/KarteForm";
 import KarteHistory from "@/components/KarteHistory";
 
 export default function Home() {
   const [records, setRecords] = useState<KarteRecord[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setRecords(getRecentRecords(10));
+  const fetchRecords = useCallback(async () => {
+    setLoadingHistory(true);
+    setHistoryError(null);
+    try {
+      const res = await fetch("/api/karte");
+      if (!res.ok) throw new Error("取得失敗");
+      setRecords(await res.json());
+    } catch {
+      setHistoryError("カルテの読み込みに失敗しました");
+    } finally {
+      setLoadingHistory(false);
+    }
   }, []);
 
-  const handleSubmit = (data: KarteFormData) => {
-    const newRecord: KarteRecord = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    saveRecord(newRecord);
-    setRecords(getRecentRecords(10));
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
+
+  const handleSubmit = async (data: KarteFormData) => {
+    const res = await fetch("/api/karte", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      await fetchRecords();
+    }
   };
 
   return (
@@ -70,7 +86,22 @@ export default function Home() {
             <p className="text-xs text-gray-400 mt-0.5">最大10件まで表示</p>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <KarteHistory records={records} />
+            {loadingHistory ? (
+              <div className="flex items-center justify-center h-full text-gray-300 gap-2">
+                <svg className="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                <span className="text-sm">読み込み中...</span>
+              </div>
+            ) : historyError ? (
+              <div className="flex flex-col items-center justify-center h-full gap-2">
+                <p className="text-sm text-red-400">{historyError}</p>
+                <button onClick={fetchRecords} className="text-xs text-blue-500 underline">再試行</button>
+              </div>
+            ) : (
+              <KarteHistory records={records} />
+            )}
           </div>
         </section>
       </main>

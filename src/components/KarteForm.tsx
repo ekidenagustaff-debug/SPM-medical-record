@@ -4,7 +4,7 @@ import { useState } from "react";
 import { KarteFormData } from "@/types/karte";
 
 interface KarteFormProps {
-  onSubmit: (data: KarteFormData) => void;
+  onSubmit: (data: KarteFormData) => Promise<void>;
 }
 
 const EMPTY_FORM: KarteFormData = {
@@ -17,22 +17,32 @@ const EMPTY_FORM: KarteFormData = {
 
 export default function KarteForm({ onSubmit }: KarteFormProps) {
   const [form, setForm] = useState<KarteFormData>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    if (submitted) setSubmitted(false);
+    if (error) setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.clientName.trim() || !form.trainerName.trim()) return;
-    onSubmit(form);
-    setForm(EMPTY_FORM);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    setSaving(true);
+    setError(null);
+    try {
+      await onSubmit(form);
+      setForm(EMPTY_FORM);
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch {
+      setError("保存に失敗しました。もう一度お試しください。");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -110,15 +120,25 @@ export default function KarteForm({ onSubmit }: KarteFormProps) {
 
       <button
         type="submit"
-        className="mt-auto bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 rounded-lg transition-colors text-sm shadow-sm"
+        disabled={saving}
+        className="mt-auto bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-300 text-white font-semibold py-3 rounded-lg transition-colors text-sm shadow-sm flex items-center justify-center gap-2"
       >
-        カルテを保存する
+        {saving && (
+          <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+        )}
+        {saving ? "保存中..." : "カルテを保存する"}
       </button>
 
       {submitted && (
         <p className="text-center text-sm text-green-600 font-medium -mt-2">
-          ✓ カルテを保存しました
+          ✓ Notionに保存しました
         </p>
+      )}
+      {error && (
+        <p className="text-center text-sm text-red-500 font-medium -mt-2">{error}</p>
       )}
     </form>
   );

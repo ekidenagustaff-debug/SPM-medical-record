@@ -77,11 +77,37 @@ export default function KarteCard({ record, index }: KarteCardProps) {
       )}
 
       {record.overallAssessment && (
-        <div>
+        <div className="mb-2">
           <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
           <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
             {record.overallAssessment}
           </p>
+        </div>
+      )}
+
+      {record.mediaUrls && record.mediaUrls.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {record.mediaUrls.map((url, i) => {
+            const isVideo = /\.(mp4|mov|webm|avi)(\?|$)/i.test(url);
+            return isVideo ? (
+              <video
+                key={i}
+                src={url}
+                className="w-20 h-16 object-cover rounded-lg border border-gray-100"
+                controls
+                preload="metadata"
+              />
+            ) : (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt=""
+                  className="w-20 h-16 object-cover rounded-lg border border-gray-100 hover:opacity-90 transition-opacity"
+                />
+              </a>
+            );
+          })}
         </div>
       )}
     </div>

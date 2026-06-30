@@ -24,6 +24,17 @@ function extractTags(prop: PageObjectResponse["properties"][string]): string[] {
   return [];
 }
 
+function extractFiles(prop: PageObjectResponse["properties"][string]): string[] {
+  if (prop.type === "files") {
+    return prop.files.flatMap((f) => {
+      if (f.type === "external") return [f.external.url];
+      if (f.type === "file") return [f.file.url];
+      return [];
+    });
+  }
+  return [];
+}
+
 function pageToKarte(page: PageObjectResponse): KarteRecord {
   const p = page.properties;
   return {
@@ -35,6 +46,7 @@ function pageToKarte(page: PageObjectResponse): KarteRecord {
     trainingContent: extractText(p["トレーニング内容"]),
     overallAssessment: extractText(p["総評"]),
     tags: p["タグ"] ? extractTags(p["タグ"]) : [],
+    mediaUrls: p["メディア"] ? extractFiles(p["メディア"]) : [],
     createdAt: page.created_time,
   };
 }
@@ -50,6 +62,13 @@ export async function createKarteRecord(data: KarteFormData): Promise<KarteRecor
       総評: { rich_text: richText(data.overallAssessment) },
       チーム名: { select: { name: data.teamName } },
       タグ: { multi_select: data.tags.map((name) => ({ name })) },
+      メディア: {
+        files: data.mediaUrls.map((url) => ({
+          type: "external" as const,
+          name: url.split("/").pop()?.split("?")[0] ?? "media",
+          external: { url },
+        })),
+      },
     },
   }) as PageObjectResponse;
   return pageToKarte(response);

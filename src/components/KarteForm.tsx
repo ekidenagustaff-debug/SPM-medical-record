@@ -33,6 +33,7 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [trainerOptions, setTrainerOptions] = useState<string[]>([]);
   const [tagOptions, setTagOptions] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -61,6 +62,18 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
+  };
+
+  const addNewTag = () => {
+    const tag = newTagInput.trim();
+    if (!tag) return;
+    if (!selectedTags.includes(tag)) setSelectedTags((prev) => [...prev, tag]);
+    if (!tagOptions.includes(tag)) setTagOptions((prev) => [...prev, tag]);
+    setNewTagInput("");
+  };
+
+  const handleNewTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); addNewTag(); }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,9 +169,9 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
       </div>
 
       {/* タグ */}
-      {tagOptions.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
+        {tagOptions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {tagOptions.map((tag) => (
               <button
@@ -175,8 +188,26 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
               </button>
             ))}
           </div>
+        )}
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={newTagInput}
+            onChange={(e) => setNewTagInput(e.target.value)}
+            onKeyDown={handleNewTagKeyDown}
+            placeholder="新しいタグを入力..."
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
+          />
+          <button
+            type="button"
+            onClick={addNewTag}
+            disabled={!newTagInput.trim()}
+            className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-500 font-medium transition-colors disabled:opacity-40"
+          >
+            追加
+          </button>
         </div>
-      )}
+      </div>
 
       {/* 主訴 */}
       <div className="flex flex-col gap-1">

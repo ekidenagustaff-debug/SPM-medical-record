@@ -55,7 +55,6 @@ export async function getPlayers(): Promise<PlayerInfo[]> {
   const response = await notion.databases.query({
     database_id: MEMBERS_DATABASE_ID,
     filter: { property: "区分", select: { equals: "選手" } },
-    sorts: [{ property: "掲載順", direction: "ascending" }],
     page_size: 100,
   });
 

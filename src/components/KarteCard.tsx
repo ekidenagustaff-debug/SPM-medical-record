@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { KarteRecord } from "@/types/karte";
 
 interface KarteCardProps {
   record: KarteRecord;
   index: number;
+  onCopyTags?: (tags: string[]) => void;
 }
 
 function formatDate(iso: string): string {
@@ -20,7 +22,16 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function KarteCard({ record, index }: KarteCardProps) {
+export default function KarteCard({ record, index, onCopyTags }: KarteCardProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyTags = () => {
+    if (!onCopyTags || !record.tags.length) return;
+    onCopyTags(record.tags);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -51,7 +62,22 @@ export default function KarteCard({ record, index }: KarteCardProps) {
         <div>
           {record.tags && record.tags.length > 0 ? (
             <>
-              <p className="text-xs font-semibold text-gray-500 mb-1">タグ</p>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-xs font-semibold text-gray-500">タグ</p>
+                {onCopyTags && (
+                  <button
+                    type="button"
+                    onClick={handleCopyTags}
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                      copied
+                        ? "bg-green-100 text-green-600"
+                        : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+                    }`}
+                  >
+                    {copied ? "✓ コピー済" : "フォームにコピー"}
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1">
                 {record.tags.map((tag) => (
                   <span

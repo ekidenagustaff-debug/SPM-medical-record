@@ -28,6 +28,7 @@ export default function KarteRecordPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "history">("form");
+  const [copiedTags, setCopiedTags] = useState<string[]>([]);
 
   const karteDates = records.map((r) => r.createdAt.slice(0, 10));
 
@@ -55,6 +56,11 @@ export default function KarteRecordPage() {
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
+
+  const handleCopyTags = (tags: string[]) => {
+    setCopiedTags([...tags]);
+    setActiveTab("form");
+  };
 
   const handleSubmit = async (data: KarteFormData) => {
     const res = await fetch("/api/karte", {
@@ -89,14 +95,13 @@ export default function KarteRecordPage() {
           <button onClick={fetchRecords} className="text-xs text-blue-500 underline">再試行</button>
         </div>
       ) : (
-        <KarteHistory records={records} selectedDate={selectedDate} />
+        <KarteHistory records={records} selectedDate={selectedDate} onCopyTags={handleCopyTags} />
       )}
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* ヘッダー */}
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
         <div className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0">S</div>
         <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
@@ -115,7 +120,6 @@ export default function KarteRecordPage() {
         </div>
       </header>
 
-      {/* スマホ：タブバー */}
       <div className="md:hidden flex border-b border-gray-200 bg-white">
         <button
           onClick={() => setActiveTab("form")}
@@ -146,12 +150,11 @@ export default function KarteRecordPage() {
         </button>
       </div>
 
-      {/* スマホ：タブコンテンツ */}
       <div className="md:hidden flex-1 overflow-hidden flex flex-col" style={{ height: "calc(100vh - 105px)" }}>
         {activeTab === "form" ? (
           <div className="flex-1 overflow-y-auto p-4">
             {!loadingPlayer && player && (
-              <KarteForm playerId={playerId} playerName={playerName} onSubmit={handleSubmit} />
+              <KarteForm playerId={playerId} playerName={playerName} initialTags={copiedTags} onSubmit={handleSubmit} />
             )}
           </div>
         ) : (
@@ -159,9 +162,7 @@ export default function KarteRecordPage() {
         )}
       </div>
 
-      {/* PC：左右分割レイアウト */}
       <main className="hidden md:flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
-        {/* 左：新規カルテ入力 */}
         <section className="w-1/2 flex flex-col border-r border-gray-200 bg-white">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="text-sm font-bold text-gray-700">新規カルテ記入</h2>
@@ -173,12 +174,11 @@ export default function KarteRecordPage() {
           </div>
           <div className="flex-1 overflow-y-auto p-6">
             {!loadingPlayer && player && (
-              <KarteForm playerId={playerId} playerName={playerName} onSubmit={handleSubmit} />
+              <KarteForm playerId={playerId} playerName={playerName} initialTags={copiedTags} onSubmit={handleSubmit} />
             )}
           </div>
         </section>
 
-        {/* 右：カレンダー + 過去カルテ履歴 */}
         <section className="w-1/2 flex flex-col bg-gray-50">
           <div className="px-6 py-4 border-b border-gray-200 bg-white">
             <div className="flex items-center justify-between">

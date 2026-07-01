@@ -26,6 +26,7 @@ export default function KarteRecordPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"form" | "history">("form");
 
   const karteDates = records.map((r) => r.createdAt.slice(0, 10));
 
@@ -57,12 +58,38 @@ export default function KarteRecordPage() {
     });
     if (!res.ok) throw new Error("保存失敗");
     await fetchRecords();
+    setActiveTab("history");
   };
+
+  const historyPanel = (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      {!loadingHistory && !historyError && (
+        <MiniCalendar
+          karteDates={karteDates}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
+      )}
+      {loadingHistory ? (
+        <div className="flex items-center justify-center py-8 gap-2">
+          <Spinner />
+          <span className="text-sm text-gray-300">読み込み中...</span>
+        </div>
+      ) : historyError ? (
+        <div className="flex flex-col items-center gap-2 py-8">
+          <p className="text-sm text-red-400">{historyError}</p>
+          <button onClick={fetchRecords} className="text-xs text-blue-500 underline">再試行</button>
+        </div>
+      ) : (
+        <KarteHistory records={records} selectedDate={selectedDate} />
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center gap-3 shadow-sm">
+      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
         <div className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0">S</div>
         <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
           <Link href="/" className="hover:text-blue-500 transition-colors shrink-0">チーム一覧</Link>
@@ -79,8 +106,50 @@ export default function KarteRecordPage() {
         </div>
       </header>
 
-      {/* 左右分割レイアウト */}
-      <main className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
+      {/* スマホ：タブバー */}
+      <div className="md:hidden flex border-b border-gray-200 bg-white">
+        <button
+          onClick={() => setActiveTab("form")}
+          className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${
+            activeTab === "form"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-400"
+          }`}
+        >
+          新規カルテ
+        </button>
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex items-center justify-center gap-1.5 ${
+            activeTab === "history"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-400"
+          }`}
+        >
+          過去のカルテ
+          {records.length > 0 && (
+            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+              activeTab === "history" ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"
+            }`}>
+              {records.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* スマホ：タブコンテンツ */}
+      <div className="md:hidden flex-1 overflow-hidden flex flex-col" style={{ height: "calc(100vh - 105px)" }}>
+        {activeTab === "form" ? (
+          <div className="flex-1 overflow-y-auto p-4">
+            <KarteForm teamName={teamName} playerName={playerName} onSubmit={handleSubmit} />
+          </div>
+        ) : (
+          historyPanel
+        )}
+      </div>
+
+      {/* PC：左右分割レイアウト */}
+      <main className="hidden md:flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
         {/* 左：新規カルテ入力 */}
         <section className="w-1/2 flex flex-col border-r border-gray-200 bg-white">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
@@ -106,31 +175,7 @@ export default function KarteRecordPage() {
               </span>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-            {/* ミニカレンダー */}
-            {!loadingHistory && !historyError && (
-              <MiniCalendar
-                karteDates={karteDates}
-                selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
-              />
-            )}
-
-            {/* カルテ一覧 */}
-            {loadingHistory ? (
-              <div className="flex items-center justify-center py-8 gap-2">
-                <Spinner />
-                <span className="text-sm text-gray-300">読み込み中...</span>
-              </div>
-            ) : historyError ? (
-              <div className="flex flex-col items-center gap-2 py-8">
-                <p className="text-sm text-red-400">{historyError}</p>
-                <button onClick={fetchRecords} className="text-xs text-blue-500 underline">再試行</button>
-              </div>
-            ) : (
-              <KarteHistory records={records} selectedDate={selectedDate} />
-            )}
-          </div>
+          {historyPanel}
         </section>
       </main>
     </div>

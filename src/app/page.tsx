@@ -53,7 +53,7 @@ export default function PlayerListPage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto w-full px-4 py-6">
+      <main className="max-w-lg md:max-w-5xl mx-auto w-full px-4 py-6">
         <h2 className="text-lg font-bold text-gray-800 mb-4">選手一覧</h2>
 
         {loading ? (
@@ -63,7 +63,7 @@ export default function PlayerListPage() {
         ) : players.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">選手データが見つかりません</p>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6 md:grid md:grid-cols-4 md:gap-4 md:items-start">
             {grades.map((grade) => (
               <div key={grade}>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 px-1">{grade}</p>
@@ -72,14 +72,14 @@ export default function PlayerListPage() {
                     <Link
                       key={player.id}
                       href={`/player/${player.id}`}
-                      className="bg-white border border-gray-100 rounded-xl px-5 py-3.5 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group"
+                      className="bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group"
                     >
-                      <div className="flex items-center gap-3">
-                        <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors truncate text-sm">
                           {player.name}
                         </p>
                         {player.gender && (
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
                             player.gender === "男" || player.gender === "男性"
                               ? "bg-blue-50 text-blue-500"
                               : "bg-pink-50 text-pink-500"
@@ -88,7 +88,7 @@ export default function PlayerListPage() {
                           </span>
                         )}
                       </div>
-                      <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-400 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </Link>

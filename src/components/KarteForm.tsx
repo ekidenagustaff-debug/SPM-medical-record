@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { KarteFormData } from "@/types/karte";
 
 interface KarteFormProps {
-  teamName: string;
+  playerId: string;
   playerName: string;
   onSubmit: (data: KarteFormData) => Promise<void>;
 }
@@ -27,7 +27,7 @@ function isVideoFile(file: File) {
 
 const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overallAssessment: "" };
 
-export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormProps) {
+export default function KarteForm({ playerId, playerName, onSubmit }: KarteFormProps) {
   const [form, setForm] = useState(EMPTY);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [trainerOptions, setTrainerOptions] = useState<string[]>([]);
@@ -109,7 +109,7 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
     setError(null);
     try {
       await onSubmit({
-        teamName,
+        playerId,
         clientName: playerName,
         ...form,
         tags: selectedTags,

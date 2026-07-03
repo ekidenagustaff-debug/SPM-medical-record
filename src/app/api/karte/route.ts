@@ -3,15 +3,14 @@ import { createKarteRecord, getKartesByPlayer } from "@/lib/notion";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const team = searchParams.get("team");
-  const player = searchParams.get("player");
+  const playerId = searchParams.get("playerId");
 
-  if (!team || !player) {
-    return NextResponse.json({ error: "team と player は必須です" }, { status: 400 });
+  if (!playerId) {
+    return NextResponse.json({ error: "playerId は必須です" }, { status: 400 });
   }
 
   try {
-    const records = await getKartesByPlayer(team, player);
+    const records = await getKartesByPlayer(playerId);
     return NextResponse.json(records);
   } catch (err) {
     console.error("Notion GET error:", err);
@@ -23,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      teamName,
+      playerId,
       clientName,
       trainerName,
       chiefComplaint,
@@ -33,15 +32,15 @@ export async function POST(req: NextRequest) {
       mediaUrls,
     } = body;
 
-    if (!teamName?.trim() || !clientName?.trim() || !trainerName?.trim()) {
+    if (!playerId?.trim() || !clientName?.trim() || !trainerName?.trim()) {
       return NextResponse.json(
-        { error: "チーム名・選手名・担当トレーナー名は必須です" },
+        { error: "選手ID・選手名・担当トレーナー名は必須です" },
         { status: 400 }
       );
     }
 
     const record = await createKarteRecord({
-      teamName,
+      playerId,
       clientName,
       trainerName,
       chiefComplaint: chiefComplaint ?? "",

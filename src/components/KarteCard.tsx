@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { KarteRecord } from "@/types/karte";
 
 interface KarteCardProps {
   record: KarteRecord;
   index: number;
+  onCopyTags?: (tags: string[]) => void;
+  onCopyTrainingContent?: (content: string) => void;
 }
 
 function formatDate(iso: string): string {
@@ -20,7 +23,24 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function KarteCard({ record, index }: KarteCardProps) {
+export default function KarteCard({ record, index, onCopyTags, onCopyTrainingContent }: KarteCardProps) {
+  const [copiedTags, setCopiedTags] = useState(false);
+  const [copiedContent, setCopiedContent] = useState(false);
+
+  const handleCopyTags = () => {
+    if (!onCopyTags || !record.tags.length) return;
+    onCopyTags(record.tags);
+    setCopiedTags(true);
+    setTimeout(() => setCopiedTags(false), 2000);
+  };
+
+  const handleCopyTrainingContent = () => {
+    if (!onCopyTrainingContent || !record.trainingContent) return;
+    onCopyTrainingContent(record.trainingContent);
+    setCopiedContent(true);
+    setTimeout(() => setCopiedContent(false), 2000);
+  };
+
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -45,45 +65,88 @@ export default function KarteCard({ record, index }: KarteCardProps) {
         </div>
       </div>
 
-      {record.tags && record.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {record.tags.map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
-            >
-              {tag}
-            </span>
-          ))}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          {record.tags && record.tags.length > 0 ? (
+            <>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-xs font-semibold text-gray-500">タグ</p>
+                {onCopyTags && (
+                  <button
+                    type="button"
+                    onClick={handleCopyTags}
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                      copiedTags
+                        ? "bg-green-100 text-green-600"
+                        : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+                    }`}
+                  >
+                    {copiedTags ? "✓ コピー済" : "コピー"}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {record.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
-      )}
+        <div>
+          {record.trainingContent ? (
+            <>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <p className="text-xs font-semibold text-blue-500">トレーニング内容</p>
+                {onCopyTrainingContent && (
+                  <button
+                    type="button"
+                    onClick={handleCopyTrainingContent}
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                      copiedContent
+                        ? "bg-green-100 text-green-600"
+                        : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+                    }`}
+                  >
+                    {copiedContent ? "✓ コピー済" : "コピー"}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
+                {record.trainingContent}
+              </p>
+            </>
+          ) : null}
+        </div>
+      </div>
 
-      {record.chiefComplaint && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-            {record.chiefComplaint}
-          </p>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          {record.chiefComplaint ? (
+            <>
+              <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+                {record.chiefComplaint}
+              </p>
+            </>
+          ) : null}
         </div>
-      )}
-
-      {record.trainingContent && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
-            {record.trainingContent}
-          </p>
+        <div>
+          {record.overallAssessment ? (
+            <>
+              <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+                {record.overallAssessment}
+              </p>
+            </>
+          ) : null}
         </div>
-      )}
-
-      {record.overallAssessment && (
-        <div className="mb-2">
-          <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-            {record.overallAssessment}
-          </p>
-        </div>
-      )}
+      </div>
 
       {record.mediaUrls && record.mediaUrls.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">

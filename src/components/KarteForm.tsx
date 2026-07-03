@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { KarteFormData } from "@/types/karte";
 
 interface KarteFormProps {
-  teamName: string;
+  playerId: string;
   playerName: string;
+  initialTags?: string[];
+  initialTrainingContent?: string;
   onSubmit: (data: KarteFormData) => Promise<void>;
 }
 
@@ -27,11 +29,12 @@ function isVideoFile(file: File) {
 
 const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overallAssessment: "" };
 
-export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormProps) {
+export default function KarteForm({ playerId, playerName, initialTags, initialTrainingContent, onSubmit }: KarteFormProps) {
   const [form, setForm] = useState(EMPTY);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [trainerOptions, setTrainerOptions] = useState<string[]>([]);
   const [tagOptions, setTagOptions] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -42,6 +45,18 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
     fetch("/api/trainers").then((r) => r.json()).then(setTrainerOptions).catch(() => {});
     fetch("/api/tags").then((r) => r.json()).then(setTagOptions).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (initialTags && initialTags.length > 0) {
+      setSelectedTags(initialTags);
+    }
+  }, [initialTags]);
+
+  useEffect(() => {
+    if (initialTrainingContent !== undefined && initialTrainingContent !== "") {
+      setForm((prev) => ({ ...prev, trainingContent: initialTrainingContent }));
+    }
+  }, [initialTrainingContent]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -54,6 +69,18 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
+  };
+
+  const addNewTag = () => {
+    const tag = newTagInput.trim();
+    if (!tag) return;
+    if (!selectedTags.includes(tag)) setSelectedTags((prev) => [...prev, tag]);
+    if (!tagOptions.includes(tag)) setTagOptions((prev) => [...prev, tag]);
+    setNewTagInput("");
+  };
+
+  const handleNewTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); addNewTag(); }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,7 +136,7 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
     setError(null);
     try {
       await onSubmit({
-        teamName,
+        playerId,
         clientName: playerName,
         ...form,
         tags: selectedTags,
@@ -129,7 +156,6 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
-      {/* 担当トレーナー名 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           担当トレーナー名 <span className="text-red-400">*</span>
@@ -148,38 +174,9 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
         </select>
       </div>
 
-      {/* トレーニング内容 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          トレーニング内容
-        </label>
-        <textarea
-          name="trainingContent"
-          value={form.trainingContent}
-          onChange={handleChange}
-          rows={5}
-          placeholder="実施したメニュー、セット数、重量、フォームのポイントなど..."
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
-        />
-      </div>
-
-      {/* 総評 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
-        <textarea
-          name="overallAssessment"
-          value={form.overallAssessment}
-          onChange={handleChange}
-          rows={3}
-          placeholder="今日のセッション全体の評価、次回へのメモなど..."
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
-        />
-      </div>
-
-      {/* タグ */}
-      {tagOptions.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
+        {tagOptions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {tagOptions.map((tag) => (
               <button
@@ -196,10 +193,27 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
               </button>
             ))}
           </div>
+        )}
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={newTagInput}
+            onChange={(e) => setNewTagInput(e.target.value)}
+            onKeyDown={handleNewTagKeyDown}
+            placeholder="新しいタグを入力..."
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
+          />
+          <button
+            type="button"
+            onClick={addNewTag}
+            disabled={!newTagInput.trim()}
+            className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-500 font-medium transition-colors disabled:opacity-40"
+          >
+            追加
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* 主訴 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">主訴</label>
         <textarea
@@ -212,11 +226,32 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
         />
       </div>
 
-      {/* メディア */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">トレーニング内容</label>
+        <textarea
+          name="trainingContent"
+          value={form.trainingContent}
+          onChange={handleChange}
+          rows={5}
+          placeholder="実施したメニュー、セット数、重量、フォームのポイントなど..."
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
+        <textarea
+          name="overallAssessment"
+          value={form.overallAssessment}
+          onChange={handleChange}
+          rows={3}
+          placeholder="今日のセッション全体の評価、次回へのメモなど..."
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+        />
+      </div>
+
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          写真・動画
-        </label>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">写真・動画</label>
 
         {mediaItems.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -228,7 +263,6 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={item.preview} alt="" className="w-full h-full object-cover" />
                 )}
-
                 {item.uploading && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -242,7 +276,6 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
                     <span className="text-white text-[10px] font-bold">失敗</span>
                   </div>
                 )}
-
                 <button
                   type="button"
                   onClick={() => removeMedia(item.id)}
@@ -252,7 +285,6 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
-
                 {item.isVideo && !item.uploading && (
                   <div className="absolute bottom-0.5 left-0.5 bg-black/50 rounded px-1">
                     <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -262,7 +294,6 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
                 )}
               </div>
             ))}
-
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -288,14 +319,7 @@ export default function KarteForm({ teamName, playerName, onSubmit }: KarteFormP
           </button>
         )}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-        />
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" />
       </div>
 
       <button

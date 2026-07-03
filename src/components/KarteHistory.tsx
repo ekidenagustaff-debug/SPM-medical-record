@@ -4,10 +4,10 @@ import KarteCard from "./KarteCard";
 interface KarteHistoryProps {
   records: KarteRecord[];
   selectedDate: string | null;
-  onCopyTags?: (tags: string[]) => void;
+  onCopyRecord?: (tags: string[], trainingContent: string) => void;
 }
 
-export default function KarteHistory({ records, selectedDate, onCopyTags }: KarteHistoryProps) {
+export default function KarteHistory({ records, selectedDate, onCopyRecord }: KarteHistoryProps) {
   const filtered = selectedDate
     ? records.filter((r) => r.createdAt.startsWith(selectedDate))
     : records;
@@ -34,7 +34,7 @@ export default function KarteHistory({ records, selectedDate, onCopyTags }: Kart
   return (
     <div className="flex flex-col gap-3">
       {filtered.map((record, index) => (
-        <KarteCard key={record.id} record={record} index={index} onCopyTags={onCopyTags} />
+        <KarteCard key={record.id} record={record} index={index} onCopyRecord={onCopyRecord} />
       ))}
     </div>
   );

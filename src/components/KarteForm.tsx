@@ -7,6 +7,7 @@ interface KarteFormProps {
   playerId: string;
   playerName: string;
   initialTags?: string[];
+  initialTrainingContent?: string;
   onSubmit: (data: KarteFormData) => Promise<void>;
 }
 
@@ -28,7 +29,7 @@ function isVideoFile(file: File) {
 
 const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overallAssessment: "" };
 
-export default function KarteForm({ playerId, playerName, initialTags, onSubmit }: KarteFormProps) {
+export default function KarteForm({ playerId, playerName, initialTags, initialTrainingContent, onSubmit }: KarteFormProps) {
   const [form, setForm] = useState(EMPTY);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [trainerOptions, setTrainerOptions] = useState<string[]>([]);
@@ -50,6 +51,12 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
       setSelectedTags(initialTags);
     }
   }, [initialTags]);
+
+  useEffect(() => {
+    if (initialTrainingContent !== undefined && initialTrainingContent !== "") {
+      setForm((prev) => ({ ...prev, trainingContent: initialTrainingContent }));
+    }
+  }, [initialTrainingContent]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -256,16 +263,27 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
           写真・動画
         </label>
 
+        {/* プレビューグリッド */}
         {mediaItems.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {mediaItems.map((item) => (
               <div key={item.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
                 {item.isVideo ? (
-                  <video src={item.preview} className="w-full h-full object-cover" muted />
+                  <video
+                    src={item.preview}
+                    className="w-full h-full object-cover"
+                    muted
+                  />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.preview} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={item.preview}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 )}
+
+                {/* オーバーレイ */}
                 {item.uploading && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -279,6 +297,8 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
                     <span className="text-white text-[10px] font-bold">失敗</span>
                   </div>
                 )}
+
+                {/* 削除ボタン */}
                 <button
                   type="button"
                   onClick={() => removeMedia(item.id)}
@@ -288,6 +308,8 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+
+                {/* 動画アイコン */}
                 {item.isVideo && !item.uploading && (
                   <div className="absolute bottom-0.5 left-0.5 bg-black/50 rounded px-1">
                     <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -297,6 +319,8 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
                 )}
               </div>
             ))}
+
+            {/* 追加ボタン（プレビューと並べて） */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -309,6 +333,7 @@ export default function KarteForm({ playerId, playerName, initialTags, onSubmit 
           </div>
         )}
 
+        {/* 初回アップロードボタン */}
         {mediaItems.length === 0 && (
           <button
             type="button"

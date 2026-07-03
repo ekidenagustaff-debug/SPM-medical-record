@@ -58,9 +58,13 @@ export default function KarteRecordPage() {
     fetchRecords();
   }, [fetchRecords]);
 
-  const handleCopyRecord = (tags: string[], trainingContent: string) => {
+  const handleCopyTags = (tags: string[]) => {
     setCopiedTags([...tags]);
-    setCopiedTrainingContent(trainingContent);
+    setActiveTab("form");
+  };
+
+  const handleCopyTrainingContent = (content: string) => {
+    setCopiedTrainingContent(content);
     setActiveTab("form");
   };
 
@@ -97,7 +101,7 @@ export default function KarteRecordPage() {
           <button onClick={fetchRecords} className="text-xs text-blue-500 underline">再試行</button>
         </div>
       ) : (
-        <KarteHistory records={records} selectedDate={selectedDate} onCopyRecord={handleCopyRecord} />
+        <KarteHistory records={records} selectedDate={selectedDate} onCopyTags={handleCopyTags} onCopyTrainingContent={handleCopyTrainingContent} />
       )}
     </div>
   );

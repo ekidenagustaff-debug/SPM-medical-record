@@ -4,7 +4,8 @@ import { KarteRecord } from "@/types/karte";
 interface KarteCardProps {
   record: KarteRecord;
   index: number;
-  onCopyRecord?: (tags: string[], trainingContent: string) => void;
+  onCopyTags?: (tags: string[]) => void;
+  onCopyTrainingContent?: (content: string) => void;
 }
 
 function formatDate(iso: string): string {
@@ -22,14 +23,22 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function KarteCard({ record, index, onCopyRecord }: KarteCardProps) {
-  const [copied, setCopied] = useState(false);
+export default function KarteCard({ record, index, onCopyTags, onCopyTrainingContent }: KarteCardProps) {
+  const [copiedTags, setCopiedTags] = useState(false);
+  const [copiedContent, setCopiedContent] = useState(false);
 
-  const handleCopyRecord = () => {
-    if (!onCopyRecord) return;
-    onCopyRecord(record.tags, record.trainingContent ?? "");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyTags = () => {
+    if (!onCopyTags || !record.tags.length) return;
+    onCopyTags(record.tags);
+    setCopiedTags(true);
+    setTimeout(() => setCopiedTags(false), 2000);
+  };
+
+  const handleCopyTrainingContent = () => {
+    if (!onCopyTrainingContent || !record.trainingContent) return;
+    onCopyTrainingContent(record.trainingContent);
+    setCopiedContent(true);
+    setTimeout(() => setCopiedContent(false), 2000);
   };
 
   return (
@@ -62,7 +71,22 @@ export default function KarteCard({ record, index, onCopyRecord }: KarteCardProp
         <div>
           {record.tags && record.tags.length > 0 ? (
             <>
-              <p className="text-xs font-semibold text-gray-500 mb-1">タグ</p>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-xs font-semibold text-gray-500">タグ</p>
+                {onCopyTags && (
+                  <button
+                    type="button"
+                    onClick={handleCopyTags}
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                      copiedTags
+                        ? "bg-green-100 text-green-600"
+                        : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+                    }`}
+                  >
+                    {copiedTags ? "✓ コピー済" : "コピー"}
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1">
                 {record.tags.map((tag) => (
                   <span
@@ -79,7 +103,22 @@ export default function KarteCard({ record, index, onCopyRecord }: KarteCardProp
         <div>
           {record.trainingContent ? (
             <>
-              <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <p className="text-xs font-semibold text-blue-500">トレーニング内容</p>
+                {onCopyTrainingContent && (
+                  <button
+                    type="button"
+                    onClick={handleCopyTrainingContent}
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                      copiedContent
+                        ? "bg-green-100 text-green-600"
+                        : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+                    }`}
+                  >
+                    {copiedContent ? "✓ コピー済" : "コピー"}
+                  </button>
+                )}
+              </div>
               <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
                 {record.trainingContent}
               </p>
@@ -87,23 +126,6 @@ export default function KarteCard({ record, index, onCopyRecord }: KarteCardProp
           ) : null}
         </div>
       </div>
-
-      {/* コピーボタン */}
-      {onCopyRecord && (record.tags.length > 0 || record.trainingContent) && (
-        <div className="mt-2">
-          <button
-            type="button"
-            onClick={handleCopyRecord}
-            className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
-              copied
-                ? "bg-green-100 text-green-600"
-                : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
-            }`}
-          >
-            {copied ? "✓ コピー済" : "タグ・内容をフォームにコピー"}
-          </button>
-        </div>
-      )}
 
       {/* 主訴 / 総評 */}
       <div className="grid grid-cols-2 gap-2 mb-2">

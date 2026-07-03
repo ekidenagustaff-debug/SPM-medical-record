@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { upload } from "@vercel/blob/client";
 import { KarteFormData } from "@/types/karte";
 
 interface KarteFormProps {
@@ -100,13 +101,12 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
     await Promise.all(
       newItems.map(async (item, i) => {
         try {
-          const fd = new FormData();
-          fd.append("file", files[i]);
-          const res = await fetch("/api/upload", { method: "POST", body: fd });
-          if (!res.ok) throw new Error("upload failed");
-          const { url } = await res.json();
+          const blob = await upload(files[i].name, files[i], {
+            access: "public",
+            handleUploadUrl: "/api/upload",
+          });
           setMediaItems((prev) =>
-            prev.map((m) => (m.id === item.id ? { ...m, url, uploading: false } : m))
+            prev.map((m) => (m.id === item.id ? { ...m, url: blob.url, uploading: false } : m))
           );
         } catch {
           setMediaItems((prev) =>
@@ -156,6 +156,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
+      {/* 担当トレーナー名 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           担当トレーナー名 <span className="text-red-400">*</span>
@@ -174,6 +175,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         </select>
       </div>
 
+      {/* タグ */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
         {tagOptions.length > 0 && (
@@ -214,6 +216,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         </div>
       </div>
 
+      {/* 主訴 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">主訴</label>
         <textarea
@@ -226,8 +229,11 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
+      {/* トレーニング内容 */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">トレーニング内容</label>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          トレーニング内容
+        </label>
         <textarea
           name="trainingContent"
           value={form.trainingContent}
@@ -238,6 +244,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
+      {/* 総評 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
         <textarea
@@ -250,19 +257,33 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
+      {/* メディア */}
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">写真・動画</label>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          写真・動画
+        </label>
 
+        {/* プレビューグリッド */}
         {mediaItems.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {mediaItems.map((item) => (
               <div key={item.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
                 {item.isVideo ? (
-                  <video src={item.preview} className="w-full h-full object-cover" muted />
+                  <video
+                    src={item.preview}
+                    className="w-full h-full object-cover"
+                    muted
+                  />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.preview} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={item.preview}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 )}
+
+                {/* オーバーレイ */}
                 {item.uploading && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -276,6 +297,8 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
                     <span className="text-white text-[10px] font-bold">失敗</span>
                   </div>
                 )}
+
+                {/* 削除ボタン */}
                 <button
                   type="button"
                   onClick={() => removeMedia(item.id)}
@@ -285,6 +308,8 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+
+                {/* 動画アイコン */}
                 {item.isVideo && !item.uploading && (
                   <div className="absolute bottom-0.5 left-0.5 bg-black/50 rounded px-1">
                     <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -294,6 +319,8 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
                 )}
               </div>
             ))}
+
+            {/* 追加ボタン（プレビューと並べて） */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -306,6 +333,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
           </div>
         )}
 
+        {/* 初回アップロードボタン */}
         {mediaItems.length === 0 && (
           <button
             type="button"
@@ -319,7 +347,14 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
           </button>
         )}
 
-        <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+        />
       </div>
 
       <button

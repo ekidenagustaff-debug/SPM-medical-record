@@ -2,6 +2,11 @@ import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error("BLOB_READ_WRITE_TOKEN is not set");
+    return NextResponse.json({ error: "ストレージが設定されていません" }, { status: 500 });
+  }
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
@@ -15,8 +20,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "対応していないファイル形式です" }, { status: 400 });
   }
 
-  const filename = `karte/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-  const blob = await put(filename, file, { access: "public" });
-
-  return NextResponse.json({ url: blob.url });
+  try {
+    const filename = `karte/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const blob = await put(filename, file, { access: "public" });
+    return NextResponse.json({ url: blob.url });
+  } catch (err) {
+    console.error("Blob upload error:", err);
+    return NextResponse.json({ error: "アップロードに失敗しました" }, { status: 500 });
+  }
 }

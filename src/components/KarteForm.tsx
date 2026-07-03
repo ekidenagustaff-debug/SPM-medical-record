@@ -22,10 +22,43 @@ type MediaItem = {
 };
 
 const VIDEO_EXTS = ["mp4", "mov", "webm", "avi"];
+const COMPRESSIBLE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const COMPRESS_THRESHOLD = 2 * 1024 * 1024; // 2MB以上を圧縮
 
 function isVideoFile(file: File) {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   return file.type.startsWith("video/") || VIDEO_EXTS.includes(ext);
+}
+
+async function compressImage(file: File): Promise<File> {
+  const MAX_DIM = 1920;
+  const QUALITY = 0.82;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) { height = Math.round((height * MAX_DIM) / width); width = MAX_DIM; }
+        else { width = Math.round((width * MAX_DIM) / height); height = MAX_DIM; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { reject(new Error("compression failed")); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        QUALITY
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("load failed")); };
+    img.src = url;
+  });
 }
 
 const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overallAssessment: "" };
@@ -101,7 +134,14 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
     await Promise.all(
       newItems.map(async (item, i) => {
         try {
-          const blob = await upload(files[i].name, files[i], {
+          const original = files[i];
+          const fileToUpload =
+            !item.isVideo &&
+            COMPRESSIBLE_TYPES.includes(original.type) &&
+            original.size > COMPRESS_THRESHOLD
+              ? await compressImage(original)
+              : original;
+          const blob = await upload(fileToUpload.name, fileToUpload, {
             access: "public",
             handleUploadUrl: "/api/upload",
           });

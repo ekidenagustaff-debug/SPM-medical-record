@@ -81,8 +81,8 @@ export default function PlayerListPage() {
                         {player.gender && (
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
                             player.gender === "男" || player.gender === "男性"
-                              ? "bg-blue-50 text-blue-500"
-                              : "bg-pink-50 text-pink-500"
+                              ? "bg-blue-500 text-white"
+                              : "bg-pink-400 text-white"
                           }`}>
                             {player.gender}
                           </span>

@@ -91,20 +91,9 @@ export default function PlayerListPage() {
                         href={`/player/${player.id}`}
                         className="bg-white border border-gray-100 rounded-xl px-5 py-3.5 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group"
                       >
-                        <div className="flex items-center gap-3">
-                          <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                            {player.name}
-                          </p>
-                          {player.gender && (
-                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                              player.gender.startsWith("男")
-                                ? "bg-blue-500 text-white"
-                                : "bg-pink-400 text-white"
-                            }`}>
-                              {player.gender}
-                            </span>
-                          )}
-                        </div>
+                        <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                          {player.name}
+                        </p>
                         <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>

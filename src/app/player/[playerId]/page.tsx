@@ -48,7 +48,7 @@ export default function KarteRecordPage() {
       if (!res.ok) throw new Error("取得失敗");
       setRecords(await res.json());
     } catch {
-      setHistoryError("カルテの読み込みに失敗しました");
+      setHistoryError("カルテの読み込miに失敗しました");
     } finally {
       setLoadingHistory(false);
     }
@@ -93,7 +93,7 @@ export default function KarteRecordPage() {
       {loadingHistory ? (
         <div className="flex items-center justify-center py-8 gap-2">
           <Spinner />
-          <span className="text-sm text-gray-300">読み込み中...</span>
+          <span className="text-sm text-gray-300">読み込mi中...</span>
         </div>
       ) : historyError ? (
         <div className="flex flex-col items-center gap-2 py-8">
@@ -107,7 +107,8 @@ export default function KarteRecordPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen overflow-hidden bg-gray-50 flex flex-col">
+      {/* ヘッダー */}
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
         <div className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0">S</div>
         <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
@@ -116,7 +117,7 @@ export default function KarteRecordPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           {loadingPlayer ? (
-            <span className="text-gray-400">読み込み中...</span>
+            <span className="text-gray-400">読み込mi中...</span>
           ) : (
             <span className="text-gray-700 font-semibold truncate">
               {playerName}
@@ -126,6 +127,7 @@ export default function KarteRecordPage() {
         </div>
       </header>
 
+      {/* スマホ：タブバー */}
       <div className="md:hidden flex border-b border-gray-200 bg-white">
         <button
           onClick={() => setActiveTab("form")}
@@ -156,7 +158,8 @@ export default function KarteRecordPage() {
         </button>
       </div>
 
-      <div className="md:hidden flex-1 overflow-hidden flex flex-col" style={{ height: "calc(100vh - 105px)" }}>
+      {/* スマホ：タブコンテンツ */}
+      <div className="md:hidden flex-1 overflow-hidden flex flex-col min-h-0">
         {activeTab === "form" ? (
           <div className="flex-1 overflow-y-auto p-4">
             {!loadingPlayer && player && (
@@ -168,7 +171,9 @@ export default function KarteRecordPage() {
         )}
       </div>
 
-      <main className="hidden md:flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
+      {/* PC：左右分割レイアウト */}
+      <main className="hidden md:flex flex-1 overflow-hidden min-h-0">
+        {/* 左：新規カルテ入力 */}
         <section className="w-1/2 flex flex-col border-r border-gray-200 bg-white">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="text-sm font-bold text-gray-700">新規カルテ記入</h2>
@@ -185,6 +190,7 @@ export default function KarteRecordPage() {
           </div>
         </section>
 
+        {/* 右：カレンダー + 過去カルテ履歴 */}
         <section className="w-1/2 flex flex-col bg-gray-50">
           <div className="px-6 py-4 border-b border-gray-200 bg-white">
             <div className="flex items-center justify-between">

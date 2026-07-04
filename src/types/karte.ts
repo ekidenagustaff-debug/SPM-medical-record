@@ -1,5 +1,6 @@
 export interface KarteRecord {
   id: string;
+  playerId?: string;
   clientName: string;
   trainerName: string;
   chiefComplaint: string;

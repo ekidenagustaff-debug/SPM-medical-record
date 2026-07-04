@@ -38,8 +38,14 @@ function extractFiles(prop: PageObjectResponse["properties"][string]): string[] 
 
 function pageToKarte(page: PageObjectResponse): KarteRecord {
   const p = page.properties;
+  const buinProp = p["部員"];
+  const playerId =
+    buinProp?.type === "relation" && buinProp.relation.length > 0
+      ? buinProp.relation[0].id
+      : undefined;
   return {
     id: page.id,
+    playerId,
     clientName: extractText(p["クライアント名"]),
     trainerName: extractText(p["担当トレーナー名"]),
     chiefComplaint: extractText(p["主訴"]),
@@ -118,6 +124,21 @@ export async function getKartesByPlayer(playerId: string): Promise<KarteRecord[]
     },
     sorts: [{ timestamp: "created_time", direction: "descending" }],
     page_size: 100,
+  });
+  return (response.results as PageObjectResponse[]).map(pageToKarte);
+}
+
+export async function getRecentKartes(days = 6): Promise<KarteRecord[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const response = await notion.databases.query({
+    database_id: DATABASE_ID,
+    filter: {
+      timestamp: "created_time",
+      created_time: { on_or_after: since.toISOString() },
+    },
+    sorts: [{ timestamp: "created_time", direction: "descending" }],
+    page_size: 50,
   });
   return (response.results as PageObjectResponse[]).map(pageToKarte);
 }

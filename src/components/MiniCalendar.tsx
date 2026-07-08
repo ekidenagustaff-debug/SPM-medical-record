@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 interface MiniCalendarProps {
-  karteDates: string[];
+  karteDates: string[]; // "YYYY-MM-DD" format
+  raceDates?: string[]; // "YYYY-MM-DD" format
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
 }
@@ -14,13 +15,14 @@ function toDateStr(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export default function MiniCalendar({ karteDates, selectedDate, onSelectDate }: MiniCalendarProps) {
+export default function MiniCalendar({ karteDates, raceDates = [], selectedDate, onSelectDate }: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const karteSet = new Set(karteDates);
+  const raceSet = new Set(raceDates);
 
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -58,6 +60,20 @@ export default function MiniCalendar({ karteDates, selectedDate, onSelectDate }:
         </button>
       </div>
 
+      {/* 凡例 */}
+      {raceDates.length > 0 && (
+        <div className="flex items-center gap-3 mb-2 px-1">
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+            <span className="text-[9px] text-gray-400">カルテ</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+            <span className="text-[9px] text-gray-400">大会</span>
+          </div>
+        </div>
+      )}
+
       {/* 曜日 */}
       <div className="grid grid-cols-7 mb-1">
         {DAY_NAMES.map((d, i) => (
@@ -76,6 +92,8 @@ export default function MiniCalendar({ karteDates, selectedDate, onSelectDate }:
           if (!day) return <div key={i} />;
           const dateStr = toDateStr(viewYear, viewMonth, day);
           const hasKarte = karteSet.has(dateStr);
+          const hasRace = raceSet.has(dateStr);
+          const hasActivity = hasKarte || hasRace;
           const isSelected = selectedDate === dateStr;
           const isToday = dateStr === todayStr;
           const col = i % 7;
@@ -83,23 +101,26 @@ export default function MiniCalendar({ karteDates, selectedDate, onSelectDate }:
           return (
             <button
               key={i}
-              onClick={() => hasKarte && onSelectDate(isSelected ? null : dateStr)}
-              disabled={!hasKarte}
+              onClick={() => hasActivity && onSelectDate(isSelected ? null : dateStr)}
+              disabled={!hasActivity}
               className={`
                 relative flex flex-col items-center justify-center h-7 w-full rounded text-[11px] transition-colors
                 ${isSelected ? "bg-blue-600 text-white font-semibold" : ""}
-                ${!isSelected && hasKarte ? "hover:bg-blue-50 cursor-pointer font-medium" : ""}
-                ${!isSelected && !hasKarte ? "cursor-default" : ""}
+                ${!isSelected && hasActivity ? "hover:bg-blue-50 cursor-pointer font-medium" : ""}
+                ${!isSelected && !hasActivity ? "cursor-default" : ""}
                 ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
                 ${!isSelected && col === 0 ? "text-red-400" : ""}
                 ${!isSelected && col === 6 ? "text-blue-500" : ""}
-                ${!isSelected && !hasKarte && col !== 0 && col !== 6 ? "text-gray-300" : ""}
-                ${!isSelected && hasKarte && col !== 0 && col !== 6 ? "text-gray-700" : ""}
+                ${!isSelected && !hasActivity && col !== 0 && col !== 6 ? "text-gray-300" : ""}
+                ${!isSelected && hasActivity && col !== 0 && col !== 6 ? "text-gray-700" : ""}
               `}
             >
               {day}
-              {hasKarte && !isSelected && (
-                <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-blue-400" />
+              {!isSelected && (hasKarte || hasRace) && (
+                <span className="absolute bottom-0.5 flex gap-0.5">
+                  {hasKarte && <span className="w-1 h-1 rounded-full bg-blue-400" />}
+                  {hasRace && <span className="w-1 h-1 rounded-full bg-orange-400" />}
+                </span>
               )}
             </button>
           );

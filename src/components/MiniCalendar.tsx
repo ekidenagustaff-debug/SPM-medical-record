@@ -34,6 +34,7 @@ export default function MiniCalendar({
   const karteSet = new Set(karteDates);
   const raceSet = new Set(raceDates);
 
+  // date → races のマップ
   const raceByDate = raceResults.reduce<Record<string, RaceResult[]>>((acc, r) => {
     if (!r.date) return acc;
     if (!acc[r.date]) acc[r.date] = [];
@@ -97,6 +98,7 @@ export default function MiniCalendar({
           const hasKarte = karteSet.has(dateStr);
           const hasRace = raceSet.has(dateStr);
           const hasActivity = hasKarte || hasRace;
+          // 大会日はフィルタせずスクロール → selectedDate の対象はカルテのみ
           const isSelected = selectedDate === dateStr && hasKarte && !hasRace;
           const isToday = dateStr === todayStr;
           const col = i % 7;
@@ -129,14 +131,15 @@ export default function MiniCalendar({
               className={`
                 flex flex-col items-center pt-1 pb-1 px-0.5 w-full rounded transition-colors min-h-[2.75rem]
                 ${isSelected ? "bg-blue-600" : ""}
-                ${!isSelected && hasKarte && !hasRace ? "hover:bg-blue-50" : ""}
-                ${!isSelected && hasRace ? "hover:bg-orange-50" : ""}
-                ${!hasActivity ? "cursor-default" : "cursor-pointer"}
+                ${!isSelected && hasActivity ? "hover:bg-orange-50 cursor-pointer" : ""}
+                ${hasKarte && !hasRace && !isSelected ? "hover:bg-blue-50" : ""}
+                ${!hasActivity ? "cursor-default" : ""}
                 ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
               `}
             >
               <span className={`text-[11px] font-medium leading-none mb-0.5 ${textColor}`}>{day}</span>
 
+              {/* カルテバッジ */}
               {hasKarte && (
                 <span
                   className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 ${
@@ -147,18 +150,16 @@ export default function MiniCalendar({
                 </span>
               )}
 
+              {/* 大会情報（種目・記録のみ表示） */}
               {dayRaces.length > 0 && (
                 <div className="w-full">
-                  <div className="text-[7px] font-bold text-orange-700 leading-tight truncate w-full">
-                    {dayRaces[0].competitionName}
-                  </div>
                   {(dayRaces[0].eventName || dayRaces[0].result) && (
-                    <div className="text-[7px] text-orange-500 leading-tight truncate w-full">
+                    <div className="text-[9px] font-bold text-orange-600 leading-tight truncate w-full">
                       {[dayRaces[0].eventName, dayRaces[0].result].filter(Boolean).join(" ")}
                     </div>
                   )}
                   {dayRaces.length > 1 && (
-                    <div className="text-[7px] text-orange-400 leading-tight">+{dayRaces.length - 1}</div>
+                    <div className="text-[9px] text-orange-400 leading-tight">+{dayRaces.length - 1}</div>
                   )}
                 </div>
               )}

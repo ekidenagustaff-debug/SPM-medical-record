@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { KarteFormData, KarteRecord, PlayerInfo, RaceResult } from "@/types/karte";
@@ -43,7 +43,7 @@ function formatRaceDate(dateStr: string): string {
 
 function RaceResultCard({ result }: { result: RaceResult }) {
   return (
-    <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
+    <div id={`race-${result.id}`} className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
         <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">大会</span>
         <span className="text-xs text-gray-400">{formatRaceDate(result.date)}</span>
@@ -101,8 +101,26 @@ export default function KarteRecordPage() {
   const [copiedTags, setCopiedTags] = useState<string[]>([]);
   const [copiedTrainingContent, setCopiedTrainingContent] = useState("");
 
+  const historyPanelRef = useRef<HTMLDivElement>(null);
+
   const karteDates = records.map((r) => r.createdAt.slice(0, 10));
   const raceDates = raceResults.map((r) => r.date).filter(Boolean);
+
+  const scrollToRace = useCallback((date: string) => {
+    const target = raceResults.find((r) => r.date === date);
+    if (!target) return;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`race-${target.id}`);
+      if (!el) return;
+      const panel = historyPanelRef.current;
+      if (panel) {
+        const top = el.offsetTop - panel.offsetTop - 8;
+        panel.scrollTo({ top, behavior: "smooth" });
+      } else {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }, [raceResults]);
 
   const allItems: HistoryItem[] = [
     ...records.map((r) => ({ type: "karte" as const, sortKey: r.createdAt, data: r })),
@@ -217,7 +235,7 @@ export default function KarteRecordPage() {
   );
 
   const historyPanel = (
-    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+    <div ref={historyPanelRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
       {!loadingHistory && !historyError && (
         <MiniCalendar
           karteDates={karteDates}
@@ -225,6 +243,7 @@ export default function KarteRecordPage() {
           raceResults={raceResults}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
+          onScrollToRace={scrollToRace}
         />
       )}
       {historyContent}

@@ -9,6 +9,7 @@ interface MiniCalendarProps {
   raceResults?: RaceResult[];
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
+  onScrollToRace?: (date: string) => void;
 }
 
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -23,6 +24,7 @@ export default function MiniCalendar({
   raceResults = [],
   selectedDate,
   onSelectDate,
+  onScrollToRace,
 }: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -31,6 +33,13 @@ export default function MiniCalendar({
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const karteSet = new Set(karteDates);
   const raceSet = new Set(raceDates);
+
+  const raceByDate = raceResults.reduce<Record<string, RaceResult[]>>((acc, r) => {
+    if (!r.date) return acc;
+    if (!acc[r.date]) acc[r.date] = [];
+    acc[r.date].push(r);
+    return acc;
+  }, {});
 
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -48,10 +57,6 @@ export default function MiniCalendar({
     if (viewMonth === 11) { setViewYear((y) => y + 1); setViewMonth(0); }
     else setViewMonth((m) => m + 1);
   };
-
-  const selectedRaces = selectedDate
-    ? raceResults.filter((r) => r.date === selectedDate)
-    : [];
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
@@ -85,16 +90,26 @@ export default function MiniCalendar({
       </div>
 
       {/* 日付グリッド */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-y-0.5">
         {cells.map((day, i) => {
-          if (!day) return <div key={i} className="h-11" />;
+          if (!day) return <div key={i} className="min-h-[2.75rem]" />;
           const dateStr = toDateStr(viewYear, viewMonth, day);
           const hasKarte = karteSet.has(dateStr);
           const hasRace = raceSet.has(dateStr);
           const hasActivity = hasKarte || hasRace;
-          const isSelected = selectedDate === dateStr;
+          const isSelected = selectedDate === dateStr && hasKarte && !hasRace;
           const isToday = dateStr === todayStr;
           const col = i % 7;
+          const dayRaces = raceByDate[dateStr] ?? [];
+
+          const handleClick = () => {
+            if (!hasActivity) return;
+            if (hasRace) {
+              onScrollToRace?.(dateStr);
+            } else {
+              onSelectDate(isSelected ? null : dateStr);
+            }
+          };
 
           const textColor = isSelected
             ? "text-white"
@@ -109,58 +124,48 @@ export default function MiniCalendar({
           return (
             <button
               key={i}
-              onClick={() => hasActivity && onSelectDate(isSelected ? null : dateStr)}
+              onClick={handleClick}
               disabled={!hasActivity}
               className={`
-                relative flex flex-col items-center pt-1 pb-1 h-11 w-full rounded transition-colors
+                flex flex-col items-center pt-1 pb-1 px-0.5 w-full rounded transition-colors min-h-[2.75rem]
                 ${isSelected ? "bg-blue-600" : ""}
-                ${!isSelected && hasActivity ? "hover:bg-blue-50 cursor-pointer" : ""}
-                ${!isSelected && !hasActivity ? "cursor-default" : ""}
+                ${!isSelected && hasKarte && !hasRace ? "hover:bg-blue-50" : ""}
+                ${!isSelected && hasRace ? "hover:bg-orange-50" : ""}
+                ${!hasActivity ? "cursor-default" : "cursor-pointer"}
                 ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
               `}
             >
-              <span className={`text-[11px] font-medium leading-none mb-1 ${textColor}`}>{day}</span>
-              <div className="flex flex-col gap-0.5 w-full px-0.5">
-                {hasKarte && (
-                  <span
-                    className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none truncate w-full ${
-                      isSelected
-                        ? "bg-white/20 text-white"
-                        : "bg-blue-100 text-blue-600"
-                    }`}
-                  >
-                    パーソナル
-                  </span>
-                )}
-                {hasRace && (
-                  <span
-                    className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none truncate w-full ${
-                      isSelected
-                        ? "bg-white/20 text-white"
-                        : "bg-orange-100 text-orange-500"
-                    }`}
-                  >
-                    大会
-                  </span>
-                )}
-              </div>
+              <span className={`text-[11px] font-medium leading-none mb-0.5 ${textColor}`}>{day}</span>
+
+              {hasKarte && (
+                <span
+                  className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 ${
+                    isSelected ? "bg-white/20 text-white" : "bg-blue-100 text-blue-600"
+                  }`}
+                >
+                  パーソナル
+                </span>
+              )}
+
+              {dayRaces.length > 0 && (
+                <div className="w-full">
+                  <div className="text-[7px] font-bold text-orange-700 leading-tight truncate w-full">
+                    {dayRaces[0].competitionName}
+                  </div>
+                  {(dayRaces[0].eventName || dayRaces[0].result) && (
+                    <div className="text-[7px] text-orange-500 leading-tight truncate w-full">
+                      {[dayRaces[0].eventName, dayRaces[0].result].filter(Boolean).join(" ")}
+                    </div>
+                  )}
+                  {dayRaces.length > 1 && (
+                    <div className="text-[7px] text-orange-400 leading-tight">+{dayRaces.length - 1}</div>
+                  )}
+                </div>
+              )}
             </button>
           );
         })}
       </div>
-
-      {/* 選択日の大会プレビュー */}
-      {selectedRaces.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-orange-100 flex flex-col gap-1">
-          {selectedRaces.map((r) => (
-            <div key={r.id} className="bg-orange-50 rounded-lg px-2 py-1.5 text-[10px] text-orange-800 leading-relaxed">
-              <span className="font-bold">{r.competitionName}</span>
-              {r.eventName && <span className="text-orange-500"> / {r.eventName}</span>}
-              {r.result && <span className="font-bold"> / {r.result}</span>}
-            </div>
-          ))}
-        </div>
-      )}
 
       {selectedDate && (
         <div className="mt-2 text-center border-t border-gray-50 pt-2">

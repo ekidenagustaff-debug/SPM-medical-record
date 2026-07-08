@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { RaceResult } from "@/types/karte";
 
 interface MiniCalendarProps {
-  karteDates: string[]; // "YYYY-MM-DD" format
-  raceDates?: string[]; // "YYYY-MM-DD" format
+  karteDates: string[];
+  raceDates?: string[];
+  raceResults?: RaceResult[];
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
 }
@@ -15,7 +17,13 @@ function toDateStr(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export default function MiniCalendar({ karteDates, raceDates = [], selectedDate, onSelectDate }: MiniCalendarProps) {
+export default function MiniCalendar({
+  karteDates,
+  raceDates = [],
+  raceResults = [],
+  selectedDate,
+  onSelectDate,
+}: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -41,6 +49,10 @@ export default function MiniCalendar({ karteDates, raceDates = [], selectedDate,
     else setViewMonth((m) => m + 1);
   };
 
+  const selectedRaces = selectedDate
+    ? raceResults.filter((r) => r.date === selectedDate)
+    : [];
+
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
       {/* ヘッダー */}
@@ -60,20 +72,6 @@ export default function MiniCalendar({ karteDates, raceDates = [], selectedDate,
         </button>
       </div>
 
-      {/* 凡例 */}
-      {raceDates.length > 0 && (
-        <div className="flex items-center gap-3 mb-2 px-1">
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-            <span className="text-[9px] text-gray-400">カルテ</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
-            <span className="text-[9px] text-gray-400">大会</span>
-          </div>
-        </div>
-      )}
-
       {/* 曜日 */}
       <div className="grid grid-cols-7 mb-1">
         {DAY_NAMES.map((d, i) => (
@@ -89,7 +87,7 @@ export default function MiniCalendar({ karteDates, raceDates = [], selectedDate,
       {/* 日付グリッド */}
       <div className="grid grid-cols-7">
         {cells.map((day, i) => {
-          if (!day) return <div key={i} />;
+          if (!day) return <div key={i} className="h-11" />;
           const dateStr = toDateStr(viewYear, viewMonth, day);
           const hasKarte = karteSet.has(dateStr);
           const hasRace = raceSet.has(dateStr);
@@ -98,34 +96,71 @@ export default function MiniCalendar({ karteDates, raceDates = [], selectedDate,
           const isToday = dateStr === todayStr;
           const col = i % 7;
 
+          const textColor = isSelected
+            ? "text-white"
+            : col === 0
+            ? "text-red-400"
+            : col === 6
+            ? "text-blue-500"
+            : hasActivity
+            ? "text-gray-700"
+            : "text-gray-300";
+
           return (
             <button
               key={i}
               onClick={() => hasActivity && onSelectDate(isSelected ? null : dateStr)}
               disabled={!hasActivity}
               className={`
-                relative flex flex-col items-center justify-center h-7 w-full rounded text-[11px] transition-colors
-                ${isSelected ? "bg-blue-600 text-white font-semibold" : ""}
-                ${!isSelected && hasActivity ? "hover:bg-blue-50 cursor-pointer font-medium" : ""}
+                relative flex flex-col items-center pt-1 pb-1 h-11 w-full rounded transition-colors
+                ${isSelected ? "bg-blue-600" : ""}
+                ${!isSelected && hasActivity ? "hover:bg-blue-50 cursor-pointer" : ""}
                 ${!isSelected && !hasActivity ? "cursor-default" : ""}
                 ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
-                ${!isSelected && col === 0 ? "text-red-400" : ""}
-                ${!isSelected && col === 6 ? "text-blue-500" : ""}
-                ${!isSelected && !hasActivity && col !== 0 && col !== 6 ? "text-gray-300" : ""}
-                ${!isSelected && hasActivity && col !== 0 && col !== 6 ? "text-gray-700" : ""}
               `}
             >
-              {day}
-              {!isSelected && (hasKarte || hasRace) && (
-                <span className="absolute bottom-0.5 flex gap-0.5">
-                  {hasKarte && <span className="w-1 h-1 rounded-full bg-blue-400" />}
-                  {hasRace && <span className="w-1 h-1 rounded-full bg-orange-400" />}
-                </span>
-              )}
+              <span className={`text-[11px] font-medium leading-none mb-1 ${textColor}`}>{day}</span>
+              <div className="flex flex-col gap-0.5 w-full px-0.5">
+                {hasKarte && (
+                  <span
+                    className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none truncate w-full ${
+                      isSelected
+                        ? "bg-white/20 text-white"
+                        : "bg-blue-100 text-blue-600"
+                    }`}
+                  >
+                    パーソナル
+                  </span>
+                )}
+                {hasRace && (
+                  <span
+                    className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none truncate w-full ${
+                      isSelected
+                        ? "bg-white/20 text-white"
+                        : "bg-orange-100 text-orange-500"
+                    }`}
+                  >
+                    大会
+                  </span>
+                )}
+              </div>
             </button>
           );
         })}
       </div>
+
+      {/* 選択日の大会プレビュー */}
+      {selectedRaces.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-orange-100 flex flex-col gap-1">
+          {selectedRaces.map((r) => (
+            <div key={r.id} className="bg-orange-50 rounded-lg px-2 py-1.5 text-[10px] text-orange-800 leading-relaxed">
+              <span className="font-bold">{r.competitionName}</span>
+              {r.eventName && <span className="text-orange-500"> / {r.eventName}</span>}
+              {r.result && <span className="font-bold"> / {r.result}</span>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {selectedDate && (
         <div className="mt-2 text-center border-t border-gray-50 pt-2">

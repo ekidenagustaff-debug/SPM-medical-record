@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { KarteFormData, KarteRecord, PlayerInfo, RaceResult } from "@/types/karte";
 import KarteForm from "@/components/KarteForm";
-import KarteHistory from "@/components/KarteHistory";
+import KarteCard from "@/components/KarteCard";
 import MiniCalendar from "@/components/MiniCalendar";
 
 function Spinner() {
@@ -20,26 +20,35 @@ function Spinner() {
 const FLAG_COLORS: Record<string, string> = {
   PB: "bg-red-100 text-red-600 border-red-200",
   SB: "bg-blue-100 text-blue-600 border-blue-200",
-  優勝: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  入賞: "bg-orange-100 text-orange-600 border-orange-200",
-  準優勝: "bg-gray-100 text-gray-600 border-gray-200",
-  決勝進出: "bg-red-100 text-red-600 border-red-200",
-  区間賞: "bg-pink-100 text-pink-600 border-pink-200",
-  青学記録: "bg-blue-100 text-blue-700 border-blue-200",
-  初レース: "bg-pink-100 text-pink-500 border-pink-200",
-  大会新: "bg-orange-100 text-orange-700 border-orange-200",
+  "優勝": "bg-yellow-100 text-yellow-700 border-yellow-200",
+  "入賞": "bg-orange-100 text-orange-600 border-orange-200",
+  "準優勝": "bg-gray-100 text-gray-600 border-gray-200",
+  "決勝進出": "bg-red-100 text-red-600 border-red-200",
+  "区間賞": "bg-pink-100 text-pink-600 border-pink-200",
+  "青学記録": "bg-blue-100 text-blue-700 border-blue-200",
+  "初レース": "bg-pink-100 text-pink-500 border-pink-200",
+  "大会新": "bg-orange-100 text-orange-700 border-orange-200",
 };
+
+function formatRaceDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+}
 
 function RaceResultCard({ result }: { result: RaceResult }) {
   return (
-    <div className="bg-orange-50 border border-orange-100 rounded-xl p-3.5 shadow-sm">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <svg className="w-3 h-3 text-orange-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-        </svg>
-        <span className="text-[10px] font-bold text-orange-500 uppercase tracking-wide">大会結果</span>
+    <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">大会</span>
+        <span className="text-xs text-gray-400">{formatRaceDate(result.date)}</span>
       </div>
-      <p className="font-semibold text-sm text-gray-800 leading-tight mb-1">{result.competitionName}</p>
+      <p className="font-semibold text-sm text-gray-800 leading-tight mb-2">{result.competitionName}</p>
       <div className="flex items-center gap-2 flex-wrap mb-1.5">
         {result.eventName && (
           <span className="text-xs text-gray-500">{result.eventName}</span>
@@ -67,11 +76,15 @@ function RaceResultCard({ result }: { result: RaceResult }) {
         </div>
       )}
       {result.notes && (
-        <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">{result.notes}</p>
+        <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">{result.notes}</p>
       )}
     </div>
   );
 }
+
+type HistoryItem =
+  | { type: "karte"; sortKey: string; data: KarteRecord }
+  | { type: "race"; sortKey: string; data: RaceResult };
 
 export default function KarteRecordPage() {
   const params = useParams();
@@ -90,6 +103,26 @@ export default function KarteRecordPage() {
 
   const karteDates = records.map((r) => r.createdAt.slice(0, 10));
   const raceDates = raceResults.map((r) => r.date).filter(Boolean);
+
+  const allItems: HistoryItem[] = [
+    ...records.map((r) => ({ type: "karte" as const, sortKey: r.createdAt, data: r })),
+    ...raceResults.map((r) => ({ type: "race" as const, sortKey: r.date, data: r })),
+  ].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+
+  const filteredItems = selectedDate
+    ? allItems.filter((item) =>
+        item.type === "karte"
+          ? item.data.createdAt.startsWith(selectedDate)
+          : item.data.date === selectedDate
+      )
+    : allItems;
+
+  const karteIndexMap = new Map(
+    records
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((k, i) => [k.id, i])
+  );
 
   useEffect(() => {
     fetch(`/api/players/${playerId}`)
@@ -144,9 +177,44 @@ export default function KarteRecordPage() {
 
   const playerName = player?.name ?? "";
 
-  const selectedRaceResults = selectedDate
-    ? raceResults.filter((r) => r.date === selectedDate)
-    : [];
+  const historyContent = loadingHistory ? (
+    <div className="flex items-center justify-center py-8 gap-2">
+      <Spinner />
+      <span className="text-sm text-gray-300">読み込み中...</span>
+    </div>
+  ) : historyError ? (
+    <div className="flex flex-col items-center gap-2 py-8">
+      <p className="text-sm text-red-400">{historyError}</p>
+      <button onClick={fetchRecords} className="text-xs text-blue-500 underline">再試行</button>
+    </div>
+  ) : allItems.length === 0 ? (
+    <div className="flex flex-col items-center justify-center h-32 text-gray-300 gap-3">
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <p className="text-sm">まだ記録はありません</p>
+    </div>
+  ) : filteredItems.length === 0 ? (
+    <p className="text-sm text-gray-400 text-center py-6">
+      {selectedDate?.replace(/-/g, "/")} の記録はありません
+    </p>
+  ) : (
+    <div className="flex flex-col gap-3">
+      {filteredItems.map((item) =>
+        item.type === "karte" ? (
+          <KarteCard
+            key={item.data.id}
+            record={item.data}
+            index={karteIndexMap.get(item.data.id) ?? 0}
+            onCopyTags={handleCopyTags}
+            onCopyTrainingContent={handleCopyTrainingContent}
+          />
+        ) : (
+          <RaceResultCard key={item.data.id} result={item.data} />
+        )
+      )}
+    </div>
+  );
 
   const historyPanel = (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
@@ -154,28 +222,12 @@ export default function KarteRecordPage() {
         <MiniCalendar
           karteDates={karteDates}
           raceDates={raceDates}
+          raceResults={raceResults}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
       )}
-      {loadingHistory ? (
-        <div className="flex items-center justify-center py-8 gap-2">
-          <Spinner />
-          <span className="text-sm text-gray-300">読み込み中...</span>
-        </div>
-      ) : historyError ? (
-        <div className="flex flex-col items-center gap-2 py-8">
-          <p className="text-sm text-red-400">{historyError}</p>
-          <button onClick={fetchRecords} className="text-xs text-blue-500 underline">再試行</button>
-        </div>
-      ) : (
-        <>
-          {selectedRaceResults.map((r) => (
-            <RaceResultCard key={r.id} result={r} />
-          ))}
-          <KarteHistory records={records} selectedDate={selectedDate} onCopyTags={handleCopyTags} onCopyTrainingContent={handleCopyTrainingContent} />
-        </>
-      )}
+      {historyContent}
     </div>
   );
 
@@ -220,12 +272,12 @@ export default function KarteRecordPage() {
               : "border-transparent text-gray-400"
           }`}
         >
-          過去のカルテ
-          {records.length > 0 && (
+          記録
+          {allItems.length > 0 && (
             <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
               activeTab === "history" ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"
             }`}>
-              {records.length}
+              {allItems.length}
             </span>
           )}
         </button>
@@ -263,20 +315,22 @@ export default function KarteRecordPage() {
           </div>
         </section>
 
-        {/* 右：カレンダー + 過去カルテ履歴 */}
+        {/* 右：カレンダー + 統合記録 */}
         <section className="w-1/2 flex flex-col bg-gray-50">
           <div className="px-6 py-4 border-b border-gray-200 bg-white">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-gray-700">過去のカルテ</h2>
+              <h2 className="text-sm font-bold text-gray-700">記録</h2>
               <div className="flex items-center gap-2">
                 {raceResults.length > 0 && (
                   <span className="bg-orange-100 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full">
                     大会 {raceResults.length}件
                   </span>
                 )}
-                <span className="bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                  {records.length}件
-                </span>
+                {records.length > 0 && (
+                  <span className="bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    カルテ {records.length}件
+                  </span>
+                )}
               </div>
             </div>
           </div>

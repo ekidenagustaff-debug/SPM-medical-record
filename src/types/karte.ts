@@ -35,3 +35,16 @@ export interface TeamInfo {
   name: string;
   playerCount: number;
 }
+
+export interface RaceResult {
+  id: string;
+  competitionName: string;
+  eventName: string;
+  date: string; // "YYYY-MM-DD"
+  result: string;
+  rank?: number;
+  flags: string[];
+  venue: string;
+  notes: string;
+  category: string;
+}

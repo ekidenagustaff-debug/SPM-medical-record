@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { RaceResult } from "@/types/karte";
 
 interface MiniCalendarProps {
   karteDates: string[];
+  raceDates?: string[];
+  raceResults?: RaceResult[];
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
+  onScrollToRace?: (date: string) => void;
 }
 
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -14,13 +18,28 @@ function toDateStr(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export default function MiniCalendar({ karteDates, selectedDate, onSelectDate }: MiniCalendarProps) {
+export default function MiniCalendar({
+  karteDates,
+  raceDates = [],
+  raceResults = [],
+  selectedDate,
+  onSelectDate,
+  onScrollToRace,
+}: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const karteSet = new Set(karteDates);
+  const raceSet = new Set(raceDates);
+
+  const raceByDate = raceResults.reduce<Record<string, RaceResult[]>>((acc, r) => {
+    if (!r.date) return acc;
+    if (!acc[r.date]) acc[r.date] = [];
+    acc[r.date].push(r);
+    return acc;
+  }, {});
 
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -68,37 +87,74 @@ export default function MiniCalendar({ karteDates, selectedDate, onSelectDate }:
         ))}
       </div>
 
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-y-0.5">
         {cells.map((day, i) => {
-          if (!day) return <div key={i} />;
+          if (!day) return <div key={i} className="min-h-[2.75rem]" />;
           const dateStr = toDateStr(viewYear, viewMonth, day);
           const hasKarte = karteSet.has(dateStr);
-          const isSelected = selectedDate === dateStr;
+          const hasRace = raceSet.has(dateStr);
+          const hasActivity = hasKarte || hasRace;
+          const isSelected = selectedDate === dateStr && hasKarte && !hasRace;
           const isToday = dateStr === todayStr;
           const col = i % 7;
+          const dayRaces = raceByDate[dateStr] ?? [];
+
+          const handleClick = () => {
+            if (!hasActivity) return;
+            if (hasRace) {
+              onScrollToRace?.(dateStr);
+            } else {
+              onSelectDate(isSelected ? null : dateStr);
+            }
+          };
+
+          const textColor = isSelected
+            ? "text-white"
+            : col === 0
+            ? "text-red-400"
+            : col === 6
+            ? "text-blue-500"
+            : hasActivity
+            ? "text-gray-700"
+            : "text-gray-300";
 
           return (
             <button
               key={i}
-              onClick={() => hasKarte && onSelectDate(isSelected ? null : dateStr)}
-              disabled={!hasKarte}
-              className={[
-                "relative flex flex-col items-center justify-center h-7 w-full rounded text-[11px] transition-colors",
-                isSelected ? "bg-blue-600 text-white font-semibold" : "",
-                !isSelected && hasKarte ? "hover:bg-blue-50 cursor-pointer font-medium" : "",
-                !isSelected && !hasKarte ? "cursor-default" : "",
-                !isSelected && isToday ? "ring-1 ring-blue-400" : "",
-                !isSelected && col === 0 && !hasKarte ? "text-red-200" : "",
-                !isSelected && col === 0 && hasKarte ? "text-red-400" : "",
-                !isSelected && col === 6 && !hasKarte ? "text-blue-200" : "",
-                !isSelected && col === 6 && hasKarte ? "text-blue-500" : "",
-                !isSelected && col !== 0 && col !== 6 && !hasKarte ? "text-gray-300" : "",
-                !isSelected && col !== 0 && col !== 6 && hasKarte ? "text-gray-700" : "",
-              ].filter(Boolean).join(" ")}
+              onClick={handleClick}
+              disabled={!hasActivity}
+              className={`
+                flex flex-col items-center pt-1 pb-1 px-0.5 w-full rounded transition-colors min-h-[2.75rem]
+                ${isSelected ? "bg-blue-600" : ""}
+                ${!isSelected && hasActivity ? "hover:bg-orange-50 cursor-pointer" : ""}
+                ${hasKarte && !hasRace && !isSelected ? "hover:bg-blue-50" : ""}
+                ${!hasActivity ? "cursor-default" : ""}
+                ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
+              `}
             >
-              {day}
-              {hasKarte && !isSelected && (
-                <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-blue-400" />
+              <span className={`text-[11px] font-medium leading-none mb-0.5 ${textColor}`}>{day}</span>
+
+              {hasKarte && (
+                <span
+                  className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 ${
+                    isSelected ? "bg-white/20 text-white" : "bg-blue-100 text-blue-600"
+                  }`}
+                >
+                  パーソナル
+                </span>
+              )}
+
+              {dayRaces.length > 0 && (
+                <div className="w-full">
+                  {(dayRaces[0].eventName || dayRaces[0].result) && (
+                    <div className="text-[9px] font-bold text-orange-600 leading-tight truncate w-full">
+                      {[dayRaces[0].eventName, dayRaces[0].result].filter(Boolean).join(" ")}
+                    </div>
+                  )}
+                  {dayRaces.length > 1 && (
+                    <div className="text-[9px] text-orange-400 leading-tight">+{dayRaces.length - 1}</div>
+                  )}
+                </div>
               )}
             </button>
           );

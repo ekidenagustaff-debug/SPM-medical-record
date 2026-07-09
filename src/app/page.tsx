@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { KarteRecord, PlayerInfo } from "@/types/karte";
+import { KarteRecord, PlayerInfo, MedicalKarteRecord } from "@/types/karte";
 
 function Spinner() {
   return (
@@ -26,11 +26,15 @@ function formatDate(iso: string): string {
 
 const GRADE_ORDER = ["1年", "2年", "3年", "4年"];
 
+type RecentItem =
+  | { kind: "physical"; data: KarteRecord }
+  | { kind: "medical"; data: MedicalKarteRecord };
+
 export default function PlayerListPage() {
   const [players, setPlayers] = useState<PlayerInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [recentKartes, setRecentKartes] = useState<KarteRecord[]>([]);
+  const [allRecent, setAllRecent] = useState<RecentItem[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
 
   useEffect(() => {
@@ -40,11 +44,16 @@ export default function PlayerListPage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
 
-    fetch("/api/karte/recent")
-      .then((r) => r.ok ? r.json() : [])
-      .then(setRecentKartes)
-      .catch(() => {})
-      .finally(() => setLoadingRecent(false));
+    Promise.all([
+      fetch("/api/karte/recent").then((r) => r.ok ? r.json() : []).catch(() => []),
+      fetch("/api/medical-karte/recent").then((r) => r.ok ? r.json() : []).catch(() => []),
+    ]).then(([physical, medical]) => {
+      const merged: RecentItem[] = [
+        ...(physical as KarteRecord[]).map((d) => ({ kind: "physical" as const, data: d })),
+        ...(medical as MedicalKarteRecord[]).map((d) => ({ kind: "medical" as const, data: d })),
+      ].sort((a, b) => b.data.createdAt.localeCompare(a.data.createdAt));
+      setAllRecent(merged);
+    }).finally(() => setLoadingRecent(false));
   }, []);
 
   const grouped = players.reduce<Record<string, PlayerInfo[]>>((acc, p) => {
@@ -70,7 +79,6 @@ export default function PlayerListPage() {
       </header>
 
       <main className="max-w-5xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row md:gap-8 md:items-start">
-        {/* 選手一覧 — PC:左, スマホ:上 */}
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-gray-800 mb-4">選手一覧</h2>
           {loading ? (
@@ -106,10 +114,9 @@ export default function PlayerListPage() {
           )}
         </div>
 
-        {/* 最近のカルテ — PC:右, スマホ:下 */}
         <div className="mt-8 md:mt-0 md:w-72 md:shrink-0">
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-sm font-bold text-gray-700">最近のカルテ</h2>
+            <h2 className="text-sm font-bold text-gray-700">最近の記録</h2>
             <span className="text-[10px] font-semibold bg-orange-50 text-orange-500 px-2 py-0.5 rounded-full border border-orange-100">
               直近6日
             </span>
@@ -117,50 +124,94 @@ export default function PlayerListPage() {
 
           {loadingRecent ? (
             <div className="flex justify-center py-8"><Spinner /></div>
-          ) : recentKartes.length === 0 ? (
+          ) : allRecent.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-gray-300 gap-2">
               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p className="text-xs">直近6日のカルテはありません</p>
+              <p className="text-xs">直近6日の記録はありません</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
-              {recentKartes.map((r) => (
-                <div key={r.id} className="bg-white border border-gray-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow">
+              {allRecent.map((item) => (
+                <div key={item.data.id} className="bg-white border border-gray-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold text-orange-400">{formatRelativeDate(r.createdAt)}</span>
-                    <span className="text-[10px] text-gray-400">{formatDate(r.createdAt)}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-bold ${
+                        item.kind === "physical" ? "text-orange-400" : "text-green-500"
+                      }`}>
+                        {formatRelativeDate(item.data.createdAt)}
+                      </span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                        item.kind === "physical"
+                          ? "bg-blue-50 text-blue-600 border-blue-100"
+                          : "bg-green-50 text-green-600 border-green-100"
+                      }`}>
+                        {item.kind === "physical" ? "フィジカル" : "メディカル"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-gray-400">{formatDate(item.data.createdAt)}</span>
                   </div>
+
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    {r.playerId ? (
+                    {item.data.playerId ? (
                       <Link
-                        href={`/player/${r.playerId}`}
+                        href={`/player/${item.data.playerId}`}
                         className="font-semibold text-sm text-gray-800 hover:text-blue-600 transition-colors"
                       >
-                        {r.clientName}
+                        {item.data.clientName}
                       </Link>
                     ) : (
-                      <span className="font-semibold text-sm text-gray-800">{r.clientName}</span>
+                      <span className="font-semibold text-sm text-gray-800">{item.data.clientName}</span>
                     )}
-                    <span className="text-xs text-gray-400">{r.trainerName}</span>
+                    <span className="text-xs text-gray-400">{item.data.trainerName}</span>
                   </div>
-                  {r.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-1.5">
-                      {r.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-medium border border-blue-100"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {r.trainingContent && (
-                    <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
-                      {r.trainingContent}
-                    </p>
+
+                  {item.kind === "physical" ? (
+                    <>
+                      {item.data.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-1.5">
+                          {item.data.tags.map((tag) => (
+                            <span key={tag} className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-medium border border-blue-100">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {item.data.trainingContent && (
+                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                          {item.data.trainingContent}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {item.data.chiefComplaint && (
+                        <p className="text-[11px] text-gray-500 line-clamp-1 leading-relaxed mb-1">
+                          <span className="font-semibold text-orange-500">主訴: </span>{item.data.chiefComplaint}
+                        </p>
+                      )}
+                      <div className="flex gap-1.5 flex-wrap">
+                        {item.data.acupuncturePresent && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                            item.data.acupuncturePresent === "あり"
+                              ? "bg-red-50 text-red-600 border-red-200"
+                              : "bg-gray-100 text-gray-500 border-gray-200"
+                          }`}>
+                            针{item.data.acupuncturePresent}
+                          </span>
+                        )}
+                        {item.data.treatmentScope && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                            item.data.treatmentScope === "全身治療"
+                              ? "bg-blue-50 text-blue-600 border-blue-200"
+                              : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                          }`}>
+                            {item.data.treatmentScope}
+                          </span>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               ))}

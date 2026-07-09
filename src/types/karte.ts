@@ -40,11 +40,24 @@ export interface RaceResult {
   id: string;
   competitionName: string;
   eventName: string;
-  date: string; // "YYYY-MM-DD"
+  date: string;
   result: string;
   rank?: number;
   flags: string[];
   venue: string;
   notes: string;
   category: string;
+}
+
+export interface MedicalKarteRecord {
+  id: string;
+  playerId?: string;
+  clientName: string;
+  trainerName: string;
+  chiefComplaint: string;
+  acupuncturePresent: string;
+  acupunctureLocation: string;
+  treatmentScope: string;
+  overallAssessment: string;
+  createdAt: string;
 }

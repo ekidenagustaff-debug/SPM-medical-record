@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client";
-import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult } from "@/types/karte";
+import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord } from "@/types/karte";
 import {
   PageObjectResponse,
   DatabaseObjectResponse,
@@ -9,6 +9,7 @@ const notion = new Client({ auth: process.env.NOTION_TOKEN });
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
 const MEMBERS_DATABASE_ID = process.env.NOTION_MEMBERS_DATABASE_ID!;
 const RACE_RESULTS_DATABASE_ID = process.env.NOTION_RACE_RESULTS_DATABASE_ID ?? "35fbaada-911e-8099-926c-f466fa679254";
+const MEDICAL_KARTE_DATABASE_ID = process.env.NOTION_MEDICAL_KARTE_DATABASE_ID ?? "63114b9380574b4485e0a8a455823f54";
 
 function richText(value: string) {
   return [{ text: { content: value } }];
@@ -203,6 +204,55 @@ export async function getRaceResultsByPlayer(playerId: string): Promise<RaceResu
     page_size: 100,
   });
   return (response.results as PageObjectResponse[]).map(pageToRaceResult);
+}
+
+function pageToMedicalKarte(page: PageObjectResponse): MedicalKarteRecord {
+  const p = page.properties;
+  const buinProp = p["部員"];
+  const playerId =
+    buinProp?.type === "relation" && buinProp.relation.length > 0
+      ? buinProp.relation[0].id
+      : undefined;
+  return {
+    id: page.id,
+    playerId,
+    clientName: extractText(p["クライアント名"]),
+    trainerName: extractText(p["担当トレーナー名"]),
+    chiefComplaint: extractText(p["主訴"]),
+    acupuncturePresent: extractText(p["针治療の有無"]),
+    acupunctureLocation: extractText(p["针治療の箇所"]),
+    treatmentScope: extractText(p["治療範囲"]),
+    overallAssessment: extractText(p["総評"]),
+    createdAt: page.created_time,
+  };
+}
+
+export async function getMedicalKartesByPlayer(playerId: string): Promise<MedicalKarteRecord[]> {
+  const response = await notion.databases.query({
+    database_id: MEDICAL_KARTE_DATABASE_ID,
+    filter: {
+      property: "部員",
+      relation: { contains: playerId },
+    },
+    sorts: [{ timestamp: "created_time", direction: "descending" }],
+    page_size: 100,
+  });
+  return (response.results as PageObjectResponse[]).map(pageToMedicalKarte);
+}
+
+export async function getRecentMedicalKartes(days = 6): Promise<MedicalKarteRecord[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const response = await notion.databases.query({
+    database_id: MEDICAL_KARTE_DATABASE_ID,
+    filter: {
+      timestamp: "created_time",
+      created_time: { on_or_after: since.toISOString() },
+    },
+    sorts: [{ timestamp: "created_time", direction: "descending" }],
+    page_size: 50,
+  });
+  return (response.results as PageObjectResponse[]).map(pageToMedicalKarte);
 }
 
 export async function getTeams(): Promise<TeamInfo[]> {

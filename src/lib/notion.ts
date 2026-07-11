@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client";
-import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord } from "@/types/karte";
+import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord, BloodTestRecord } from "@/types/karte";
 import {
   PageObjectResponse,
   DatabaseObjectResponse,
@@ -10,6 +10,48 @@ const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
 const MEMBERS_DATABASE_ID = process.env.NOTION_MEMBERS_DATABASE_ID!;
 const RACE_RESULTS_DATABASE_ID = process.env.NOTION_RACE_RESULTS_DATABASE_ID ?? "35fbaada-911e-8099-926c-f466fa679254";
 const MEDICAL_KARTE_DATABASE_ID = process.env.NOTION_MEDICAL_KARTE_DATABASE_ID ?? "63114b9380574b4485e0a8a455823f54";
+const BLOOD_TEST_DATABASE_ID = process.env.NOTION_BLOOD_TEST_DATABASE_ID ?? "17232150351a454aaac1845412b83781";
+
+const BLOOD_TEST_KEYS = [
+  "フェリチン(Ferritin)",
+  "Hb（ヘモグロビン量）",
+  "ヘマトクリット値（Hematocrit）",
+  "Fe（血清鉄）",
+  "UIBC(不飽和鉄結合能)",
+  "TIBC(総鉄結合能)",
+  "TSAT(トランスフェリン飽和度)",
+  "MCV（平均赤血球容積）",
+  "MCH（平均赤血球色素量）",
+  "MCHC（平均赤血球血色素濃度）",
+  "網赤血球数",
+  "CK（クレアチンキナーゼ）",
+  "BUN（尿素窒素）",
+  "コルチゾール(Cortisol)",
+  "GOT/AST",
+  "Cr（クレアチニン）",
+  "K（カリウム）",
+  "Na（血清ナトリウム）",
+  "Cl（血清クロール）",
+  "尿酸",
+  "ALP（アルカリホスファターゼ）",
+  "Ca(血清カルシウム)",
+  "LD（乳酸脱水素酵素）",
+  "総蛋白",
+  "テストステロン",
+  "亜鉛",
+  "ビタミンD",
+  "白血球数",
+  "赤血球数",
+  "血小板数",
+  "Neutro",
+  "Baso",
+  "Eosino",
+  "Lympho",
+  "Mono",
+  "E2（エストラジオール）",
+  "FSH（卵胞刺激ホルモン）",
+  "LH（黄体形成ホルモン）",
+] as const;
 
 function richText(value: string) {
   return [{ text: { content: value } }];
@@ -65,7 +107,6 @@ export async function getPlayers(): Promise<PlayerInfo[]> {
     filter: { property: "区分", select: { equals: "選手" } },
     page_size: 100,
   });
-
   return (response.results as PageObjectResponse[]).map((page) => {
     const p = page.properties;
     return {
@@ -109,9 +150,7 @@ export async function createKarteRecord(data: KarteFormData): Promise<KarteRecor
           external: { url },
         })),
       },
-      "部員": {
-        relation: [{ id: data.playerId }],
-      },
+      "部員": { relation: [{ id: data.playerId }] },
     },
   })) as PageObjectResponse;
   return pageToKarte(response);
@@ -120,10 +159,7 @@ export async function createKarteRecord(data: KarteFormData): Promise<KarteRecor
 export async function getKartesByPlayer(playerId: string): Promise<KarteRecord[]> {
   const response = await notion.databases.query({
     database_id: DATABASE_ID,
-    filter: {
-      property: "部員",
-      relation: { contains: playerId },
-    },
+    filter: { property: "部員", relation: { contains: playerId } },
     sorts: [{ timestamp: "created_time", direction: "descending" }],
     page_size: 100,
   });
@@ -135,10 +171,7 @@ export async function getRecentKartes(days = 6): Promise<KarteRecord[]> {
   since.setDate(since.getDate() - days);
   const response = await notion.databases.query({
     database_id: DATABASE_ID,
-    filter: {
-      timestamp: "created_time",
-      created_time: { on_or_after: since.toISOString() },
-    },
+    filter: { timestamp: "created_time", created_time: { on_or_after: since.toISOString() } },
     sorts: [{ timestamp: "created_time", direction: "descending" }],
     page_size: 50,
   });
@@ -146,39 +179,25 @@ export async function getRecentKartes(days = 6): Promise<KarteRecord[]> {
 }
 
 export async function getTrainerOptions(): Promise<string[]> {
-  const db = (await notion.databases.retrieve({
-    database_id: DATABASE_ID,
-  })) as DatabaseObjectResponse;
+  const db = (await notion.databases.retrieve({ database_id: DATABASE_ID })) as DatabaseObjectResponse;
   const prop = db.properties["担当トレーナー名"];
-  if (prop?.type === "select") {
-    return prop.select.options.map((o) => o.name);
-  }
+  if (prop?.type === "select") return prop.select.options.map((o) => o.name);
   return [];
 }
 
 export async function getTagOptions(): Promise<string[]> {
-  const db = (await notion.databases.retrieve({
-    database_id: DATABASE_ID,
-  })) as DatabaseObjectResponse;
+  const db = (await notion.databases.retrieve({ database_id: DATABASE_ID })) as DatabaseObjectResponse;
   const prop = db.properties["タグ"];
-  if (prop?.type === "multi_select") {
-    return prop.multi_select.options.map((o) => o.name);
-  }
+  if (prop?.type === "multi_select") return prop.multi_select.options.map((o) => o.name);
   return [];
 }
 
 function pageToRaceResult(page: PageObjectResponse): RaceResult {
   const p = page.properties;
   const dateProp = p["日付"];
-  const date =
-    dateProp?.type === "date" && dateProp.date?.start
-      ? dateProp.date.start.slice(0, 10)
-      : "";
+  const date = dateProp?.type === "date" && dateProp.date?.start ? dateProp.date.start.slice(0, 10) : "";
   const rankProp = p["順位"];
-  const rank =
-    rankProp?.type === "number" && rankProp.number != null
-      ? rankProp.number
-      : undefined;
+  const rank = rankProp?.type === "number" && rankProp.number != null ? rankProp.number : undefined;
   return {
     id: page.id,
     competitionName: extractText(p["大会名"]),
@@ -196,10 +215,7 @@ function pageToRaceResult(page: PageObjectResponse): RaceResult {
 export async function getRaceResultsByPlayer(playerId: string): Promise<RaceResult[]> {
   const response = await notion.databases.query({
     database_id: RACE_RESULTS_DATABASE_ID,
-    filter: {
-      property: "選手名",
-      relation: { contains: playerId },
-    },
+    filter: { property: "選手名", relation: { contains: playerId } },
     sorts: [{ property: "日付", direction: "descending" }],
     page_size: 100,
   });
@@ -230,10 +246,7 @@ function pageToMedicalKarte(page: PageObjectResponse): MedicalKarteRecord {
 export async function getMedicalKartesByPlayer(playerId: string): Promise<MedicalKarteRecord[]> {
   const response = await notion.databases.query({
     database_id: MEDICAL_KARTE_DATABASE_ID,
-    filter: {
-      property: "部員",
-      relation: { contains: playerId },
-    },
+    filter: { property: "部員", relation: { contains: playerId } },
     sorts: [{ timestamp: "created_time", direction: "descending" }],
     page_size: 100,
   });
@@ -245,14 +258,54 @@ export async function getRecentMedicalKartes(days = 6): Promise<MedicalKarteReco
   since.setDate(since.getDate() - days);
   const response = await notion.databases.query({
     database_id: MEDICAL_KARTE_DATABASE_ID,
-    filter: {
-      timestamp: "created_time",
-      created_time: { on_or_after: since.toISOString() },
-    },
+    filter: { timestamp: "created_time", created_time: { on_or_after: since.toISOString() } },
     sorts: [{ timestamp: "created_time", direction: "descending" }],
     page_size: 50,
   });
   return (response.results as PageObjectResponse[]).map(pageToMedicalKarte);
+}
+
+function pageToBloodTest(page: PageObjectResponse): BloodTestRecord {
+  const p = page.properties;
+  const buinProp = p["部員"];
+  const playerId =
+    buinProp?.type === "relation" && buinProp.relation.length > 0
+      ? buinProp.relation[0].id
+      : undefined;
+  const dateProp = p["採血日"];
+  const testDate =
+    dateProp?.type === "date" && dateProp.date?.start
+      ? dateProp.date.start.slice(0, 10)
+      : "";
+  const values: Record<string, number | null> = {};
+  for (const key of BLOOD_TEST_KEYS) {
+    const prop = p[key];
+    values[key] = prop?.type === "number" ? prop.number : null;
+  }
+  return {
+    id: page.id,
+    playerId,
+    clientName: extractText(p["クライアント名"]),
+    testDate,
+    memo: p["メモ"] ? extractText(p["メモ"]) : "",
+    values,
+    createdAt: page.created_time,
+  };
+}
+
+export async function getBloodTestsByPlayer(playerId: string): Promise<BloodTestRecord[]> {
+  const response = await notion.databases.query({
+    database_id: BLOOD_TEST_DATABASE_ID,
+    filter: { property: "部員", relation: { contains: playerId } },
+    sorts: [{ property: "採血日", direction: "descending" }],
+    page_size: 100,
+  });
+  return (response.results as PageObjectResponse[]).map(pageToBloodTest);
+}
+
+export async function getBloodTestDatesByPlayer(playerId: string): Promise<string[]> {
+  const results = await getBloodTestsByPlayer(playerId);
+  return results.map((r) => r.testDate).filter(Boolean);
 }
 
 export async function getTeams(): Promise<TeamInfo[]> {
@@ -273,7 +326,6 @@ export async function getTeams(): Promise<TeamInfo[]> {
     }
     cursor = response.has_more ? (response.next_cursor ?? undefined) : undefined;
   } while (cursor);
-
   return Array.from(teamMap.entries())
     .map(([name, players]) => ({ name, playerCount: players.size }))
     .sort((a, b) => a.name.localeCompare(b.name, "ja"));

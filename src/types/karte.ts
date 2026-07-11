@@ -61,3 +61,13 @@ export interface MedicalKarteRecord {
   overallAssessment: string;
   createdAt: string;
 }
+
+export interface BloodTestRecord {
+  id: string;
+  playerId?: string;
+  clientName: string;
+  testDate: string;
+  memo: string;
+  values: Record<string, number | null>;
+  createdAt: string;
+}

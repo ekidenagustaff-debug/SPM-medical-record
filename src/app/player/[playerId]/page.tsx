@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { KarteFormData, KarteRecord, PlayerInfo, RaceResult, MedicalKarteRecord } from "@/types/karte";
+import { KarteFormData, KarteRecord, PlayerInfo, RaceResult, MedicalKarteRecord, BloodTestRecord } from "@/types/karte";
 import KarteForm from "@/components/KarteForm";
 import KarteCard from "@/components/KarteCard";
 import MedicalKarteCard from "@/components/MedicalKarteCard";
+import BloodTestCard from "@/components/BloodTestCard";
 import MiniCalendar from "@/components/MiniCalendar";
 
 function Spinner() {
@@ -34,12 +35,7 @@ const FLAG_COLORS: Record<string, string> = {
 function formatRaceDate(dateStr: string): string {
   if (!dateStr) return "";
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
+  return d.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
 }
 
 function RaceResultCard({ result }: { result: RaceResult }) {
@@ -59,18 +55,13 @@ function RaceResultCard({ result }: { result: RaceResult }) {
       {result.flags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {result.flags.map((flag) => (
-            <span
-              key={flag}
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${FLAG_COLORS[flag] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}
-            >
+            <span key={flag} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${FLAG_COLORS[flag] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
               {flag}
             </span>
           ))}
         </div>
       )}
-      {result.notes && (
-        <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">{result.notes}</p>
-      )}
+      {result.notes && <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">{result.notes}</p>}
     </div>
   );
 }
@@ -78,7 +69,8 @@ function RaceResultCard({ result }: { result: RaceResult }) {
 type HistoryItem =
   | { type: "karte"; sortKey: string; data: KarteRecord }
   | { type: "race"; sortKey: string; data: RaceResult }
-  | { type: "medical"; sortKey: string; data: MedicalKarteRecord };
+  | { type: "medical"; sortKey: string; data: MedicalKarteRecord }
+  | { type: "blood"; sortKey: string; data: BloodTestRecord };
 
 export default function KarteRecordPage() {
   const params = useParams();
@@ -88,6 +80,7 @@ export default function KarteRecordPage() {
   const [records, setRecords] = useState<KarteRecord[]>([]);
   const [raceResults, setRaceResults] = useState<RaceResult[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<MedicalKarteRecord[]>([]);
+  const [bloodTestRecords, setBloodTestRecords] = useState<BloodTestRecord[]>([]);
   const [loadingPlayer, setLoadingPlayer] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -100,6 +93,7 @@ export default function KarteRecordPage() {
 
   const karteDates = records.map((r) => r.createdAt.slice(0, 10));
   const medicalDates = medicalRecords.map((r) => r.createdAt.slice(0, 10));
+  const bloodTestDates = bloodTestRecords.map((r) => r.testDate).filter(Boolean);
   const raceDates = raceResults.map((r) => r.date).filter(Boolean);
 
   const scrollToRace = useCallback((date: string) => {
@@ -118,32 +112,45 @@ export default function KarteRecordPage() {
     });
   }, [raceResults]);
 
+  const scrollToBloodTest = useCallback((date: string) => {
+    const target = bloodTestRecords.find((r) => r.testDate === date);
+    if (!target) return;
+    requestAnimationFrame(() => {
+      const elements = document.querySelectorAll(`[data-anchor-id="blood-${target.id}"]`);
+      for (const el of elements) {
+        if ((el as HTMLElement).offsetParent !== null) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+      }
+    });
+  }, [bloodTestRecords]);
+
   const allItems: HistoryItem[] = [
     ...records.map((r) => ({ type: "karte" as const, sortKey: r.createdAt, data: r })),
     ...raceResults.map((r) => ({ type: "race" as const, sortKey: r.date, data: r })),
     ...medicalRecords.map((r) => ({ type: "medical" as const, sortKey: r.createdAt, data: r })),
+    ...bloodTestRecords.map((r) => ({ type: "blood" as const, sortKey: r.testDate, data: r })),
   ].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
 
   const filteredItems = selectedDate
-    ? allItems.filter((item) =>
-        item.type === "race"
-          ? item.data.date === selectedDate
-          : item.data.createdAt.startsWith(selectedDate)
-      )
+    ? allItems.filter((item) => {
+        if (item.type === "race") return item.data.date === selectedDate;
+        if (item.type === "blood") return item.data.testDate === selectedDate;
+        return item.data.createdAt.startsWith(selectedDate);
+      })
     : allItems;
 
   const karteIndexMap = new Map(
-    records
-      .slice()
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .map((k, i) => [k.id, i])
+    records.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((k, i) => [k.id, i])
   );
 
   const medicalIndexMap = new Map(
-    medicalRecords
-      .slice()
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .map((k, i) => [k.id, i])
+    medicalRecords.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((k, i) => [k.id, i])
+  );
+
+  const bloodTestIndexMap = new Map(
+    bloodTestRecords.slice().sort((a, b) => b.testDate.localeCompare(a.testDate)).map((r, i) => [r.id, i])
   );
 
   useEffect(() => {
@@ -161,6 +168,11 @@ export default function KarteRecordPage() {
       .then((r) => r.ok ? r.json() : [])
       .then(setMedicalRecords)
       .catch(() => {});
+
+    fetch(`/api/blood-test?playerId=${encodeURIComponent(playerId)}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then(setBloodTestRecords)
+      .catch(() => {});
   }, [playerId]);
 
   const fetchRecords = useCallback(async () => {
@@ -177,19 +189,10 @@ export default function KarteRecordPage() {
     }
   }, [playerId]);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
-  const handleCopyTags = (tags: string[]) => {
-    setCopiedTags([...tags]);
-    setActiveTab("form");
-  };
-
-  const handleCopyTrainingContent = (content: string) => {
-    setCopiedTrainingContent(content);
-    setActiveTab("form");
-  };
+  const handleCopyTags = (tags: string[]) => { setCopiedTags([...tags]); setActiveTab("form"); };
+  const handleCopyTrainingContent = (content: string) => { setCopiedTrainingContent(content); setActiveTab("form"); };
 
   const handleSubmit = async (data: KarteFormData) => {
     const res = await fetch("/api/karte", {
@@ -242,6 +245,13 @@ export default function KarteRecordPage() {
             record={item.data}
             index={medicalIndexMap.get(item.data.id) ?? 0}
           />
+        ) : item.type === "blood" ? (
+          <BloodTestCard
+            key={item.data.id}
+            record={item.data}
+            index={bloodTestIndexMap.get(item.data.id) ?? 0}
+            gender={player?.gender}
+          />
         ) : (
           <RaceResultCard key={item.data.id} result={item.data} />
         )
@@ -255,11 +265,13 @@ export default function KarteRecordPage() {
         <MiniCalendar
           karteDates={karteDates}
           medicalDates={medicalDates}
+          bloodTestDates={bloodTestDates}
           raceDates={raceDates}
           raceResults={raceResults}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
           onScrollToRace={scrollToRace}
+          onScrollToBloodTest={scrollToBloodTest}
         />
       )}
       {historyContent}
@@ -329,9 +341,7 @@ export default function KarteRecordPage() {
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="text-sm font-bold text-gray-700">新規カルテ記入</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {new Date().toLocaleDateString("ja-JP", {
-                year: "numeric", month: "long", day: "numeric", weekday: "long",
-              })}
+              {new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
             </p>
           </div>
           <div className="flex-1 overflow-y-auto p-6">
@@ -345,7 +355,12 @@ export default function KarteRecordPage() {
           <div className="px-6 py-4 border-b border-gray-200 bg-white">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-gray-700">記録</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {bloodTestRecords.length > 0 && (
+                  <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    血液検査 {bloodTestRecords.length}件
+                  </span>
+                )}
                 {medicalRecords.length > 0 && (
                   <span className="bg-green-100 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full">
                     メディカル {medicalRecords.length}件

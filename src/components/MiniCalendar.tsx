@@ -6,11 +6,13 @@ import { RaceResult } from "@/types/karte";
 interface MiniCalendarProps {
   karteDates: string[];
   medicalDates?: string[];
+  bloodTestDates?: string[];
   raceDates?: string[];
   raceResults?: RaceResult[];
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
   onScrollToRace?: (date: string) => void;
+  onScrollToBloodTest?: (date: string) => void;
 }
 
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -22,11 +24,13 @@ function toDateStr(year: number, month: number, day: number): string {
 export default function MiniCalendar({
   karteDates,
   medicalDates = [],
+  bloodTestDates = [],
   raceDates = [],
   raceResults = [],
   selectedDate,
   onSelectDate,
   onScrollToRace,
+  onScrollToBloodTest,
 }: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -35,6 +39,7 @@ export default function MiniCalendar({
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const karteSet = new Set(karteDates);
   const medicalSet = new Set(medicalDates);
+  const bloodTestSet = new Set(bloodTestDates);
   const raceSet = new Set(raceDates);
 
   const raceByDate = raceResults.reduce<Record<string, RaceResult[]>>((acc, r) => {
@@ -96,9 +101,10 @@ export default function MiniCalendar({
           const dateStr = toDateStr(viewYear, viewMonth, day);
           const hasKarte = karteSet.has(dateStr);
           const hasMedical = medicalSet.has(dateStr);
+          const hasBloodTest = bloodTestSet.has(dateStr);
           const hasRace = raceSet.has(dateStr);
-          const hasActivity = hasKarte || hasRace || hasMedical;
-          const isSelected = selectedDate === dateStr && !hasRace;
+          const hasActivity = hasKarte || hasRace || hasMedical || hasBloodTest;
+          const isSelected = selectedDate === dateStr && !hasRace && !hasBloodTest;
           const isToday = dateStr === todayStr;
           const col = i % 7;
           const dayRaces = raceByDate[dateStr] ?? [];
@@ -107,6 +113,8 @@ export default function MiniCalendar({
             if (!hasActivity) return;
             if (hasRace) {
               onScrollToRace?.(dateStr);
+            } else if (hasBloodTest) {
+              onScrollToBloodTest?.(dateStr);
             } else {
               onSelectDate(isSelected ? null : dateStr);
             }
@@ -131,7 +139,8 @@ export default function MiniCalendar({
                 flex flex-col items-center pt-1 pb-1 px-0.5 w-full rounded transition-colors min-h-[2.75rem]
                 ${isSelected ? "bg-blue-600" : ""}
                 ${!isSelected && hasRace ? "hover:bg-orange-50" : ""}
-                ${!isSelected && !hasRace && hasActivity ? "hover:bg-blue-50" : ""}
+                ${!isSelected && hasBloodTest && !hasRace ? "hover:bg-red-50" : ""}
+                ${!isSelected && !hasRace && !hasBloodTest && hasActivity ? "hover:bg-blue-50" : ""}
                 ${!hasActivity ? "cursor-default" : "cursor-pointer"}
                 ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
               `}
@@ -151,6 +160,12 @@ export default function MiniCalendar({
                   isSelected ? "bg-white/20 text-white" : "bg-green-100 text-green-600"
                 }`}>
                   メディカル
+                </span>
+              )}
+
+              {hasBloodTest && (
+                <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-red-100 text-red-600">
+                  血液検査
                 </span>
               )}
 

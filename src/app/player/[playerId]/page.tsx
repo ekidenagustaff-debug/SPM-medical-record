@@ -40,7 +40,7 @@ function formatRaceDate(dateStr: string): string {
 
 function RaceResultCard({ result }: { result: RaceResult }) {
   return (
-    <div id={`race-${result.id}`} className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
+    <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
         <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">大会</span>
         <span className="text-xs text-gray-400">{formatRaceDate(result.date)}</span>
@@ -72,6 +72,13 @@ type HistoryItem =
   | { type: "medical"; sortKey: string; data: MedicalKarteRecord }
   | { type: "blood"; sortKey: string; data: BloodTestRecord };
 
+function anchorId(item: HistoryItem): string {
+  if (item.type === "race") return `race-${item.data.id}`;
+  if (item.type === "blood") return `blood-${item.data.id}`;
+  if (item.type === "medical") return `medical-${item.data.id}`;
+  return `karte-${item.data.id}`;
+}
+
 export default function KarteRecordPage() {
   const params = useParams();
   const playerId = params.playerId as string;
@@ -84,7 +91,6 @@ export default function KarteRecordPage() {
   const [loadingPlayer, setLoadingPlayer] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "history">("form");
   const [copiedTags, setCopiedTags] = useState<string[]>([]);
   const [copiedTrainingContent, setCopiedTrainingContent] = useState("");
@@ -96,36 +102,6 @@ export default function KarteRecordPage() {
   const bloodTestDates = bloodTestRecords.map((r) => r.testDate).filter(Boolean);
   const raceDates = raceResults.map((r) => r.date).filter(Boolean);
 
-  const scrollToRace = useCallback((date: string) => {
-    const target = raceResults.find((r) => r.date === date);
-    if (!target) return;
-    requestAnimationFrame(() => {
-      const el = document.getElementById(`race-${target.id}`);
-      if (!el) return;
-      const panel = historyPanelRef.current;
-      if (panel) {
-        const top = el.offsetTop - panel.offsetTop - 8;
-        panel.scrollTo({ top, behavior: "smooth" });
-      } else {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  }, [raceResults]);
-
-  const scrollToBloodTest = useCallback((date: string) => {
-    const target = bloodTestRecords.find((r) => r.testDate === date);
-    if (!target) return;
-    requestAnimationFrame(() => {
-      const elements = document.querySelectorAll(`[data-anchor-id="blood-${target.id}"]`);
-      for (const el of elements) {
-        if ((el as HTMLElement).offsetParent !== null) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-          return;
-        }
-      }
-    });
-  }, [bloodTestRecords]);
-
   const allItems: HistoryItem[] = [
     ...records.map((r) => ({ type: "karte" as const, sortKey: r.createdAt, data: r })),
     ...raceResults.map((r) => ({ type: "race" as const, sortKey: r.date, data: r })),
@@ -133,22 +109,32 @@ export default function KarteRecordPage() {
     ...bloodTestRecords.map((r) => ({ type: "blood" as const, sortKey: r.testDate, data: r })),
   ].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
 
-  const filteredItems = selectedDate
-    ? allItems.filter((item) => {
-        if (item.type === "race") return item.data.date === selectedDate;
-        if (item.type === "blood") return item.data.testDate === selectedDate;
-        return item.data.createdAt.startsWith(selectedDate);
-      })
-    : allItems;
+  const scrollToDate = useCallback((date: string) => {
+    const candidates = allItems.filter((item) => {
+      if (item.type === "race") return item.data.date === date;
+      if (item.type === "blood") return item.data.testDate === date;
+      return item.data.createdAt.startsWith(date);
+    });
+    requestAnimationFrame(() => {
+      for (const item of candidates) {
+        const id = anchorId(item);
+        const elements = document.querySelectorAll(`[data-anchor-id="${id}"]`);
+        for (const el of elements) {
+          if ((el as HTMLElement).offsetParent !== null) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+        }
+      }
+    });
+  }, [allItems]);
 
   const karteIndexMap = new Map(
     records.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((k, i) => [k.id, i])
   );
-
   const medicalIndexMap = new Map(
     medicalRecords.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((k, i) => [k.id, i])
   );
-
   const bloodTestIndexMap = new Map(
     bloodTestRecords.slice().sort((a, b) => b.testDate.localeCompare(a.testDate)).map((r, i) => [r.id, i])
   );
@@ -224,38 +210,33 @@ export default function KarteRecordPage() {
       </svg>
       <p className="text-sm">まだ記録はありません</p>
     </div>
-  ) : filteredItems.length === 0 ? (
-    <p className="text-sm text-gray-400 text-center py-6">
-      {selectedDate?.replace(/-/g, "/")} の記録はありません
-    </p>
   ) : (
     <div className="flex flex-col gap-3">
-      {filteredItems.map((item) =>
-        item.type === "karte" ? (
-          <KarteCard
-            key={item.data.id}
-            record={item.data}
-            index={karteIndexMap.get(item.data.id) ?? 0}
-            onCopyTags={handleCopyTags}
-            onCopyTrainingContent={handleCopyTrainingContent}
-          />
-        ) : item.type === "medical" ? (
-          <MedicalKarteCard
-            key={item.data.id}
-            record={item.data}
-            index={medicalIndexMap.get(item.data.id) ?? 0}
-          />
-        ) : item.type === "blood" ? (
-          <BloodTestCard
-            key={item.data.id}
-            record={item.data}
-            index={bloodTestIndexMap.get(item.data.id) ?? 0}
-            gender={player?.gender}
-          />
-        ) : (
-          <RaceResultCard key={item.data.id} result={item.data} />
-        )
-      )}
+      {allItems.map((item) => (
+        <div key={item.data.id} data-anchor-id={anchorId(item)}>
+          {item.type === "karte" ? (
+            <KarteCard
+              record={item.data}
+              index={karteIndexMap.get(item.data.id) ?? 0}
+              onCopyTags={handleCopyTags}
+              onCopyTrainingContent={handleCopyTrainingContent}
+            />
+          ) : item.type === "medical" ? (
+            <MedicalKarteCard
+              record={item.data}
+              index={medicalIndexMap.get(item.data.id) ?? 0}
+            />
+          ) : item.type === "blood" ? (
+            <BloodTestCard
+              record={item.data}
+              index={bloodTestIndexMap.get(item.data.id) ?? 0}
+              gender={player?.gender}
+            />
+          ) : (
+            <RaceResultCard result={item.data} />
+          )}
+        </div>
+      ))}
     </div>
   );
 
@@ -268,10 +249,7 @@ export default function KarteRecordPage() {
           bloodTestDates={bloodTestDates}
           raceDates={raceDates}
           raceResults={raceResults}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          onScrollToRace={scrollToRace}
-          onScrollToBloodTest={scrollToBloodTest}
+          onScrollToDate={scrollToDate}
         />
       )}
       {historyContent}

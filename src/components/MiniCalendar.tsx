@@ -5,11 +5,11 @@ import { RaceResult } from "@/types/karte";
 
 interface MiniCalendarProps {
   karteDates: string[];
+  medicalDates?: string[];
+  bloodTestDates?: string[];
   raceDates?: string[];
   raceResults?: RaceResult[];
-  selectedDate: string | null;
-  onSelectDate: (date: string | null) => void;
-  onScrollToRace?: (date: string) => void;
+  onScrollToDate?: (date: string) => void;
 }
 
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -20,11 +20,11 @@ function toDateStr(year: number, month: number, day: number): string {
 
 export default function MiniCalendar({
   karteDates,
+  medicalDates = [],
+  bloodTestDates = [],
   raceDates = [],
   raceResults = [],
-  selectedDate,
-  onSelectDate,
-  onScrollToRace,
+  onScrollToDate,
 }: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -32,9 +32,10 @@ export default function MiniCalendar({
 
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const karteSet = new Set(karteDates);
+  const medicalSet = new Set(medicalDates);
+  const bloodSet = new Set(bloodTestDates);
   const raceSet = new Set(raceDates);
 
-  // date → races のマップ
   const raceByDate = raceResults.reduce<Record<string, RaceResult[]>>((acc, r) => {
     if (!r.date) return acc;
     if (!acc[r.date]) acc[r.date] = [];
@@ -61,7 +62,6 @@ export default function MiniCalendar({
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
-      {/* ヘッダー */}
       <div className="flex items-center justify-between mb-2">
         <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded transition-colors">
           <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -78,7 +78,6 @@ export default function MiniCalendar({
         </button>
       </div>
 
-      {/* 曜日 */}
       <div className="grid grid-cols-7 mb-1">
         {DAY_NAMES.map((d, i) => (
           <div
@@ -90,32 +89,20 @@ export default function MiniCalendar({
         ))}
       </div>
 
-      {/* 日付グリッド */}
       <div className="grid grid-cols-7 gap-y-0.5">
         {cells.map((day, i) => {
           if (!day) return <div key={i} className="min-h-[2.75rem]" />;
           const dateStr = toDateStr(viewYear, viewMonth, day);
           const hasKarte = karteSet.has(dateStr);
+          const hasMedical = medicalSet.has(dateStr);
+          const hasBlood = bloodSet.has(dateStr);
           const hasRace = raceSet.has(dateStr);
-          const hasActivity = hasKarte || hasRace;
-          // 大会日はフィルタせずスクロール → selectedDate の対象はカルテのみ
-          const isSelected = selectedDate === dateStr && hasKarte && !hasRace;
+          const hasActivity = hasKarte || hasMedical || hasBlood || hasRace;
           const isToday = dateStr === todayStr;
           const col = i % 7;
           const dayRaces = raceByDate[dateStr] ?? [];
 
-          const handleClick = () => {
-            if (!hasActivity) return;
-            if (hasRace) {
-              onScrollToRace?.(dateStr);
-            } else {
-              onSelectDate(isSelected ? null : dateStr);
-            }
-          };
-
-          const textColor = isSelected
-            ? "text-white"
-            : col === 0
+          const textColor = col === 0
             ? "text-red-400"
             : col === 6
             ? "text-blue-500"
@@ -126,31 +113,34 @@ export default function MiniCalendar({
           return (
             <button
               key={i}
-              onClick={handleClick}
+              onClick={() => hasActivity && onScrollToDate?.(dateStr)}
               disabled={!hasActivity}
               className={`
                 flex flex-col items-center pt-1 pb-1 px-0.5 w-full rounded transition-colors min-h-[2.75rem]
-                ${isSelected ? "bg-blue-600" : ""}
-                ${!isSelected && hasActivity ? "hover:bg-orange-50 cursor-pointer" : ""}
-                ${hasKarte && !hasRace && !isSelected ? "hover:bg-blue-50" : ""}
-                ${!hasActivity ? "cursor-default" : ""}
-                ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
+                ${hasActivity ? "hover:bg-gray-100 cursor-pointer" : "cursor-default"}
+                ${isToday ? "ring-1 ring-blue-400" : ""}
               `}
             >
               <span className={`text-[11px] font-medium leading-none mb-0.5 ${textColor}`}>{day}</span>
 
-              {/* カルテバッジ */}
               {hasKarte && (
-                <span
-                  className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 ${
-                    isSelected ? "bg-white/20 text-white" : "bg-blue-100 text-blue-600"
-                  }`}
-                >
+                <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-blue-100 text-blue-600">
                   パーソナル
                 </span>
               )}
 
-              {/* 大会情報（種目・記録のみ表示） */}
+              {hasMedical && (
+                <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-green-100 text-green-700">
+                  メディカル
+                </span>
+              )}
+
+              {hasBlood && (
+                <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-red-100 text-red-600">
+                  血液検査
+                </span>
+              )}
+
               {dayRaces.length > 0 && (
                 <div className="w-full">
                   {(dayRaces[0].eventName || dayRaces[0].result) && (
@@ -167,14 +157,6 @@ export default function MiniCalendar({
           );
         })}
       </div>
-
-      {selectedDate && (
-        <div className="mt-2 text-center border-t border-gray-50 pt-2">
-          <button onClick={() => onSelectDate(null)} className="text-[10px] text-blue-500 hover:underline">
-            すべて表示に戻る
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client";
-import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult } from "@/types/karte";
+import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord, BloodTestRecord } from "@/types/karte";
 import {
   PageObjectResponse,
   DatabaseObjectResponse,
@@ -9,6 +9,20 @@ const notion = new Client({ auth: process.env.NOTION_TOKEN });
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
 const MEMBERS_DATABASE_ID = process.env.NOTION_MEMBERS_DATABASE_ID!;
 const RACE_RESULTS_DATABASE_ID = process.env.NOTION_RACE_RESULTS_DATABASE_ID ?? "35fbaada-911e-8099-926c-f466fa679254";
+const MEDICAL_KARTE_DATABASE_ID = process.env.NOTION_MEDICAL_KARTE_DATABASE_ID ?? "63114b9380574b4485e0a8a455823f54";
+const BLOOD_TEST_DATABASE_ID = process.env.NOTION_BLOOD_TEST_DATABASE_ID ?? "17232150351a454aaac1845412b83781";
+
+const BLOOD_TEST_KEYS = [
+  "フェリチン(Ferritin)", "Hb（ヘモグロビン量）", "ヘマトクリット値（Hematocrit）",
+  "Fe（血清鉄）", "UIBC(不飽和鉄結合能)", "TIBC(総鉄結合能)", "TSAT(トランスフェリン飽和度)",
+  "MCV（平均赤血球容積）", "MCH（平均赤血球色素量）", "MCHC（平均赤血球血色素濃度）",
+  "網赤血球数", "CK（クレアチンキナーゼ）", "BUN（尿素窒素）", "コルチゾール(Cortisol)",
+  "GOT/AST", "Cr（クレアチニン）", "K（カリウム）", "Na（血清ナトリウム）",
+  "Cl（血清クロール）", "尿酸", "ALP（アルカリホスファターゼ）", "Ca(血清カルシウム)",
+  "LD（乳酸脱水素酵素）", "総蛋白", "テストステロン", "亜鉛", "ビタミンD",
+  "白血球数", "赤血球数", "血小板数", "Neutro", "Baso", "Eosino", "Lympho", "Mono",
+  "E2（エストラジオール）", "FSH（卵胞刺激ホルモン）", "LH（黄体形成ホルモン）",
+] as const;
 
 function richText(value: string) {
   return [{ text: { content: value } }];
@@ -55,32 +69,6 @@ function pageToKarte(page: PageObjectResponse): KarteRecord {
     tags: p["タグ"] ? extractTags(p["タグ"]) : [],
     mediaUrls: p["メディア"] ? extractFiles(p["メディア"]) : [],
     createdAt: page.created_time,
-  };
-}
-
-function pageToRaceResult(page: PageObjectResponse): RaceResult {
-  const p = page.properties;
-  const dateProp = p["日付"];
-  const date =
-    dateProp?.type === "date" && dateProp.date?.start
-      ? dateProp.date.start.slice(0, 10)
-      : "";
-  const rankProp = p["順位"];
-  const rank =
-    rankProp?.type === "number" && rankProp.number != null
-      ? rankProp.number
-      : undefined;
-  return {
-    id: page.id,
-    competitionName: extractText(p["大会名"]),
-    eventName: extractText(p["種目（表示）"]),
-    date,
-    result: extractText(p["記録"]),
-    rank,
-    flags: p["フラグ"] ? extractTags(p["フラグ"]) : [],
-    venue: extractText(p["会場"]),
-    notes: extractText(p["備考"]),
-    category: extractText(p["種別"]),
   };
 }
 
@@ -192,6 +180,32 @@ export async function getTagOptions(): Promise<string[]> {
   return [];
 }
 
+function pageToRaceResult(page: PageObjectResponse): RaceResult {
+  const p = page.properties;
+  const dateProp = p["日付"];
+  const date =
+    dateProp?.type === "date" && dateProp.date?.start
+      ? dateProp.date.start.slice(0, 10)
+      : "";
+  const rankProp = p["順位"];
+  const rank =
+    rankProp?.type === "number" && rankProp.number != null
+      ? rankProp.number
+      : undefined;
+  return {
+    id: page.id,
+    competitionName: extractText(p["大会名"]),
+    eventName: extractText(p["種目（表示）"]),
+    date,
+    result: extractText(p["記録"]),
+    rank,
+    flags: p["フラグ"] ? extractTags(p["フラグ"]) : [],
+    venue: extractText(p["会場"]),
+    notes: extractText(p["備考"]),
+    category: extractText(p["種別"]),
+  };
+}
+
 export async function getRaceResultsByPlayer(playerId: string): Promise<RaceResult[]> {
   const response = await notion.databases.query({
     database_id: RACE_RESULTS_DATABASE_ID,
@@ -203,6 +217,75 @@ export async function getRaceResultsByPlayer(playerId: string): Promise<RaceResu
     page_size: 100,
   });
   return (response.results as PageObjectResponse[]).map(pageToRaceResult);
+}
+
+function pageToMedicalKarte(page: PageObjectResponse): MedicalKarteRecord {
+  const p = page.properties;
+  const buinProp = p["部員"];
+  const playerId =
+    buinProp?.type === "relation" && buinProp.relation.length > 0
+      ? buinProp.relation[0].id
+      : undefined;
+  return {
+    id: page.id,
+    playerId,
+    clientName: extractText(p["クライアント名"]),
+    trainerName: extractText(p["担当トレーナー名"]),
+    chiefComplaint: extractText(p["主訴"]),
+    acupuncturePresence: extractText(p["针治療の有無"]),
+    acupunctureLocation: extractText(p["针治療の箇所"]),
+    treatmentRange: extractText(p["治療範囲"]),
+    overallAssessment: extractText(p["総評"]),
+    createdAt: page.created_time,
+  };
+}
+
+export async function getMedicalKartesByPlayer(playerId: string): Promise<MedicalKarteRecord[]> {
+  const response = await notion.databases.query({
+    database_id: MEDICAL_KARTE_DATABASE_ID,
+    filter: { property: "部員", relation: { contains: playerId } },
+    sorts: [{ timestamp: "created_time", direction: "descending" }],
+    page_size: 100,
+  });
+  return (response.results as PageObjectResponse[]).map(pageToMedicalKarte);
+}
+
+function pageToBloodTest(page: PageObjectResponse): BloodTestRecord {
+  const p = page.properties;
+  const buinProp = p["部員"];
+  const playerId =
+    buinProp?.type === "relation" && buinProp.relation.length > 0
+      ? buinProp.relation[0].id
+      : undefined;
+  const dateProp = p["採血日"];
+  const testDate =
+    dateProp?.type === "date" && dateProp.date?.start
+      ? dateProp.date.start.slice(0, 10)
+      : "";
+  const values: Record<string, number | null> = {};
+  for (const key of BLOOD_TEST_KEYS) {
+    const prop = p[key];
+    values[key] = prop?.type === "number" ? prop.number : null;
+  }
+  return {
+    id: page.id,
+    playerId,
+    clientName: extractText(p["クライアント名"]),
+    testDate,
+    memo: p["メモ"] ? extractText(p["メモ"]) : "",
+    values,
+    createdAt: page.created_time,
+  };
+}
+
+export async function getBloodTestsByPlayer(playerId: string): Promise<BloodTestRecord[]> {
+  const response = await notion.databases.query({
+    database_id: BLOOD_TEST_DATABASE_ID,
+    filter: { property: "部員", relation: { contains: playerId } },
+    sorts: [{ property: "採血日", direction: "descending" }],
+    page_size: 100,
+  });
+  return (response.results as PageObjectResponse[]).map(pageToBloodTest);
 }
 
 export async function getTeams(): Promise<TeamInfo[]> {

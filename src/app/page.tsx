@@ -70,7 +70,6 @@ export default function PlayerListPage() {
       </header>
 
       <main className="max-w-5xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row md:gap-8 md:items-start">
-        {/* 選手一覧 — PC:左, スマホ:上 */}
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-gray-800 mb-4">選手一覧</h2>
           {loading ? (
@@ -108,7 +107,6 @@ export default function PlayerListPage() {
           )}
         </div>
 
-        {/* 最近のカルテ — PC:右, スマホ:下 */}
         <div className="mt-8 md:mt-0 md:w-72 md:shrink-0">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-sm font-bold text-gray-700">最近のカルテ</h2>

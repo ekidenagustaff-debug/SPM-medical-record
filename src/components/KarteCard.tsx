@@ -54,7 +54,6 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
         </div>
       </div>
 
-      {/* クライアント / 担当トレーナー */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div>
           <p className="text-xs text-gray-400 mb-0.5">クライアント</p>
@@ -66,7 +65,6 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
         </div>
       </div>
 
-      {/* タグ / トレーニング内容 */}
       <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
           {record.tags && record.tags.length > 0 ? (
@@ -127,7 +125,6 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
         </div>
       </div>
 
-      {/* 主訴 / 総評 */}
       <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
           {record.chiefComplaint ? (
@@ -151,7 +148,6 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
         </div>
       </div>
 
-      {/* 写真・動画 */}
       {record.mediaUrls && record.mediaUrls.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">
           {record.mediaUrls.map((url, i) => {

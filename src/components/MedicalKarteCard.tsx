@@ -54,7 +54,7 @@ export default function MedicalKarteCard({ record, index }: Props) {
           )}
           {record.acupuncturePresence && (
             <div>
-              <span className="text-xs font-semibold text-green-700">针治療</span>
+              <span className="text-xs font-semibold text-green-700">針治療</span>
               <p className="text-gray-700 mt-0.5">
                 {record.acupuncturePresence}
                 {record.acupuncturePresence === "あり" && record.acupunctureLocation && (

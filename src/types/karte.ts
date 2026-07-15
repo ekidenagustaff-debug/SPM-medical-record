@@ -48,3 +48,26 @@ export interface RaceResult {
   notes: string;
   category: string;
 }
+
+export interface MedicalKarteRecord {
+  id: string;
+  playerId?: string;
+  clientName: string;
+  trainerName: string;
+  chiefComplaint: string;
+  acupuncturePresence: string; // 針治療の有無: "あり" | "なし" | ""
+  acupunctureLocation: string; // 針治療の箇所
+  treatmentRange: string; // 治療範囲: "全身治療" | "部分治療" | ""
+  overallAssessment: string;
+  createdAt: string;
+}
+
+export interface BloodTestRecord {
+  id: string;
+  playerId?: string;
+  clientName: string;
+  testDate: string; // "YYYY-MM-DD"
+  memo: string;
+  values: Record<string, number | null>;
+  createdAt: string;
+}

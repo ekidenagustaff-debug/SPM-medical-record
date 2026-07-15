@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { upload } from "@vercel/blob/client";
 import { KarteFormData } from "@/types/karte";
 
 interface KarteFormProps {
@@ -21,10 +22,43 @@ type MediaItem = {
 };
 
 const VIDEO_EXTS = ["mp4", "mov", "webm", "avi"];
+const COMPRESSIBLE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const COMPRESS_THRESHOLD = 2 * 1024 * 1024;
 
 function isVideoFile(file: File) {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   return file.type.startsWith("video/") || VIDEO_EXTS.includes(ext);
+}
+
+async function compressImage(file: File): Promise<File> {
+  const MAX_DIM = 1920;
+  const QUALITY = 0.82;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) { height = Math.round((height * MAX_DIM) / width); width = MAX_DIM; }
+        else { width = Math.round((width * MAX_DIM) / height); height = MAX_DIM; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { reject(new Error("compression failed")); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        QUALITY
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("load failed")); };
+    img.src = url;
+  });
 }
 
 const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overallAssessment: "" };
@@ -100,13 +134,19 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
     await Promise.all(
       newItems.map(async (item, i) => {
         try {
-          const fd = new FormData();
-          fd.append("file", files[i]);
-          const res = await fetch("/api/upload", { method: "POST", body: fd });
-          if (!res.ok) throw new Error("upload failed");
-          const { url } = await res.json();
+          const original = files[i];
+          const fileToUpload =
+            !item.isVideo &&
+            COMPRESSIBLE_TYPES.includes(original.type) &&
+            original.size > COMPRESS_THRESHOLD
+              ? await compressImage(original)
+              : original;
+          const blob = await upload(fileToUpload.name, fileToUpload, {
+            access: "public",
+            handleUploadUrl: "/api/upload",
+          });
           setMediaItems((prev) =>
-            prev.map((m) => (m.id === item.id ? { ...m, url, uploading: false } : m))
+            prev.map((m) => (m.id === item.id ? { ...m, url: blob.url, uploading: false } : m))
           );
         } catch {
           setMediaItems((prev) =>
@@ -156,7 +196,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
-      {/* 担当トレーナー名 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           担当トレーナー名 <span className="text-red-400">*</span>
@@ -175,7 +214,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         </select>
       </div>
 
-      {/* タグ */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
         {tagOptions.length > 0 && (
@@ -216,7 +254,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         </div>
       </div>
 
-      {/* 主訴 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">主訴</label>
         <textarea
@@ -229,7 +266,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
-      {/* トレーニング内容 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           トレーニング内容
@@ -244,7 +280,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
-      {/* 総評 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
         <textarea
@@ -257,13 +292,11 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
-      {/* メディア */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           写真・動画
         </label>
 
-        {/* プレビューグリッド */}
         {mediaItems.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {mediaItems.map((item) => (
@@ -283,7 +316,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
                   />
                 )}
 
-                {/* オーバーレイ */}
                 {item.uploading && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -298,7 +330,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
                   </div>
                 )}
 
-                {/* 削除ボタン */}
                 <button
                   type="button"
                   onClick={() => removeMedia(item.id)}
@@ -309,7 +340,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
                   </svg>
                 </button>
 
-                {/* 動画アイコン */}
                 {item.isVideo && !item.uploading && (
                   <div className="absolute bottom-0.5 left-0.5 bg-black/50 rounded px-1">
                     <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -320,7 +350,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
               </div>
             ))}
 
-            {/* 追加ボタン（プレビューと並べて） */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -333,7 +362,6 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
           </div>
         )}
 
-        {/* 初回アップロードボタン */}
         {mediaItems.length === 0 && (
           <button
             type="button"

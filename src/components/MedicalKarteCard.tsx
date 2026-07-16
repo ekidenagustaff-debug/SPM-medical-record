@@ -41,60 +41,61 @@ export default function MedicalKarteCard({ record, index }: { record: MedicalKar
         </div>
       </div>
 
+      {record.chiefComplaint && (
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
+          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+            {record.chiefComplaint}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
-          {record.chiefComplaint && (
-            <>
-              <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-                {record.chiefComplaint}
-              </p>
-            </>
+          <p className="text-xs text-gray-400 mb-0.5">針治療の有無</p>
+          {record.acupuncturePresent ? (
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                record.acupuncturePresent === "あり"
+                  ? "bg-red-50 text-red-500 border-red-100"
+                  : "bg-gray-50 text-gray-500 border-gray-200"
+              }`}
+            >
+              {record.acupuncturePresent}
+            </span>
+          ) : (
+            <p className="text-xs text-gray-300">—</p>
           )}
         </div>
         <div>
-          <p className="text-xs font-semibold text-gray-500 mb-0.5">针治療</p>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
-              record.acupuncturePresent === "あり"
-                ? "bg-red-50 text-red-600 border-red-200"
-                : "bg-gray-100 text-gray-500 border-gray-200"
-            }`}>
-              {record.acupuncturePresent || "なし"}
+          <p className="text-xs text-gray-400 mb-0.5">治療範囲</p>
+          {record.treatmentScope ? (
+            <span className="text-[10px] font-semibold bg-green-50 text-green-600 border border-green-100 px-2 py-0.5 rounded-full">
+              {record.treatmentScope}
             </span>
-            {record.acupuncturePresent === "あり" && record.acupunctureLocation && (
-              <span className="text-[10px] text-gray-600">{record.acupunctureLocation}</span>
-            )}
-          </div>
+          ) : (
+            <p className="text-xs text-gray-300">—</p>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          {record.treatmentScope && (
-            <>
-              <p className="text-xs font-semibold text-gray-500 mb-0.5">治療範囲</p>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
-                record.treatmentScope === "全身治療"
-                  ? "bg-blue-50 text-blue-600 border-blue-200"
-                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
-              }`}>
-                {record.treatmentScope}
-              </span>
-            </>
-          )}
+      {record.acupuncturePresent === "あり" && record.acupunctureLocation && (
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-red-500 mb-0.5">針治療の箇所</p>
+          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+            {record.acupunctureLocation}
+          </p>
         </div>
+      )}
+
+      {record.overallAssessment && (
         <div>
-          {record.overallAssessment && (
-            <>
-              <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-                {record.overallAssessment}
-              </p>
-            </>
-          )}
+          <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
+          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+            {record.overallAssessment}
+          </p>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client";
-import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord, BloodTestRecord } from "@/types/karte";
+import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord, BloodTestRecord, PlayerProfile, PlayerProfileFormData } from "@/types/karte";
 import {
   PageObjectResponse,
   DatabaseObjectResponse,
@@ -11,6 +11,7 @@ const MEMBERS_DATABASE_ID = process.env.NOTION_MEMBERS_DATABASE_ID!;
 const RACE_RESULTS_DATABASE_ID = process.env.NOTION_RACE_RESULTS_DATABASE_ID ?? "35fbaada-911e-8099-926c-f466fa679254";
 const MEDICAL_KARTE_DATABASE_ID = process.env.NOTION_MEDICAL_KARTE_DATABASE_ID ?? "63114b9380574b4485e0a8a455823f54";
 const BLOOD_TEST_DATABASE_ID = process.env.NOTION_BLOOD_TEST_DATABASE_ID ?? "17232150351a454aaac1845412b83781";
+const PLAYER_PROFILE_DATABASE_ID = process.env.NOTION_PLAYER_PROFILE_DATABASE_ID!;
 
 const BLOOD_TEST_KEYS = [
   "フェリチン(Ferritin)",
@@ -306,6 +307,47 @@ export async function getBloodTestsByPlayer(playerId: string): Promise<BloodTest
 export async function getBloodTestDatesByPlayer(playerId: string): Promise<string[]> {
   const results = await getBloodTestsByPlayer(playerId);
   return results.map((r) => r.testDate).filter(Boolean);
+}
+
+function pageToProfile(page: PageObjectResponse): PlayerProfile {
+  const p = page.properties;
+  const buinProp = p["部員DB"];
+  const playerId =
+    buinProp?.type === "relation" && buinProp.relation.length > 0
+      ? buinProp.relation[0].id
+      : undefined;
+  return {
+    id: page.id,
+    playerId,
+    clientName: extractText(p["クライアント名"]),
+    existingConditions: extractText(p["既往歴"]),
+    medications: extractText(p["服用している薬"]),
+    updatedAt: page.last_edited_time,
+  };
+}
+
+export async function getPlayerProfileByPlayer(playerId: string): Promise<PlayerProfile | null> {
+  const response = await notion.databases.query({
+    database_id: PLAYER_PROFILE_DATABASE_ID,
+    filter: { property: "部員DB", relation: { contains: playerId } },
+    page_size: 1,
+  });
+  const page = (response.results as PageObjectResponse[])[0];
+  return page ? pageToProfile(page) : null;
+}
+
+export async function upsertPlayerProfile(data: PlayerProfileFormData): Promise<PlayerProfile> {
+  const existing = await getPlayerProfileByPlayer(data.playerId);
+  const properties = {
+    "クライアント名": { title: richText(data.clientName) },
+    "既往歴": { rich_text: richText(data.existingConditions) },
+    "服用している薬": { rich_text: richText(data.medications) },
+    "部員DB": { relation: [{ id: data.playerId }] },
+  };
+  const response = existing
+    ? ((await notion.pages.update({ page_id: existing.id, properties })) as PageObjectResponse)
+    : ((await notion.pages.create({ parent: { database_id: PLAYER_PROFILE_DATABASE_ID }, properties })) as PageObjectResponse);
+  return pageToProfile(response);
 }
 
 export async function getTeams(): Promise<TeamInfo[]> {

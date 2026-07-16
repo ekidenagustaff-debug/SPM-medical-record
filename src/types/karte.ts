@@ -71,3 +71,19 @@ export interface BloodTestRecord {
   values: Record<string, number | null>;
   createdAt: string;
 }
+
+export interface PlayerProfile {
+  id: string;
+  playerId?: string;
+  clientName: string;
+  existingConditions: string;
+  medications: string;
+  updatedAt: string;
+}
+
+export interface PlayerProfileFormData {
+  playerId: string;
+  clientName: string;
+  existingConditions: string;
+  medications: string;
+}

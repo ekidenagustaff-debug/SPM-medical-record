@@ -5,10 +5,11 @@ import { RaceResult } from "@/types/karte";
 
 interface MiniCalendarProps {
   karteDates: string[];
+  medicalDates?: string[];
+  bloodTestDates?: string[];
   raceDates?: string[];
   raceResults?: RaceResult[];
-  onJumpToKarte?: (date: string) => void;
-  onJumpToRace?: (date: string) => void;
+  onScrollToDate?: (date: string) => void;
 }
 
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -19,10 +20,11 @@ function toDateStr(year: number, month: number, day: number): string {
 
 export default function MiniCalendar({
   karteDates,
+  medicalDates = [],
+  bloodTestDates = [],
   raceDates = [],
   raceResults = [],
-  onJumpToKarte,
-  onJumpToRace,
+  onScrollToDate,
 }: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -30,6 +32,8 @@ export default function MiniCalendar({
 
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const karteSet = new Set(karteDates);
+  const medicalSet = new Set(medicalDates);
+  const bloodTestSet = new Set(bloodTestDates);
   const raceSet = new Set(raceDates);
 
   const raceByDate = raceResults.reduce<Record<string, RaceResult[]>>((acc, r) => {
@@ -90,21 +94,13 @@ export default function MiniCalendar({
           if (!day) return <div key={i} className="min-h-[2.75rem]" />;
           const dateStr = toDateStr(viewYear, viewMonth, day);
           const hasKarte = karteSet.has(dateStr);
+          const hasMedical = medicalSet.has(dateStr);
+          const hasBloodTest = bloodTestSet.has(dateStr);
           const hasRace = raceSet.has(dateStr);
-          const hasActivity = hasKarte || hasRace;
+          const hasActivity = hasKarte || hasRace || hasMedical || hasBloodTest;
           const isToday = dateStr === todayStr;
           const col = i % 7;
           const dayRaces = raceByDate[dateStr] ?? [];
-
-          const handleClick = () => {
-            if (hasRace) {
-              onJumpToRace?.(dateStr);
-              return;
-            }
-            if (hasKarte) {
-              onJumpToKarte?.(dateStr);
-            }
-          };
 
           const textColor = col === 0
             ? "text-red-400"
@@ -117,12 +113,11 @@ export default function MiniCalendar({
           return (
             <button
               key={i}
-              onClick={handleClick}
+              onClick={() => hasActivity && onScrollToDate?.(dateStr)}
               disabled={!hasActivity}
               className={`
                 flex flex-col items-center pt-1 pb-1 px-0.5 w-full rounded transition-colors min-h-[2.75rem]
-                ${hasActivity ? "hover:bg-orange-50 cursor-pointer" : "cursor-default"}
-                ${hasKarte && !hasRace ? "hover:bg-blue-50" : ""}
+                ${hasActivity ? "hover:bg-gray-100 cursor-pointer" : "cursor-default"}
                 ${isToday ? "ring-1 ring-blue-400" : ""}
               `}
             >
@@ -131,6 +126,18 @@ export default function MiniCalendar({
               {hasKarte && (
                 <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-blue-100 text-blue-600">
                   パーソナル
+                </span>
+              )}
+
+              {hasMedical && (
+                <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-green-100 text-green-600">
+                  メディカル
+                </span>
+              )}
+
+              {hasBloodTest && (
+                <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-red-100 text-red-600">
+                  血液検査
                 </span>
               )}
 

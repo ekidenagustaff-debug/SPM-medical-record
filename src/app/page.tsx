@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { KarteRecord, PlayerInfo } from "@/types/karte";
+import { KarteRecord, PlayerInfo, MedicalKarteRecord } from "@/types/karte";
 
 function Spinner() {
   return (
@@ -30,14 +30,18 @@ function formatTime(iso: string): string {
 
 const GRADE_ORDER = ["1年", "2年", "3年", "4年"];
 
+type RecentItem =
+  | { kind: "physical"; data: KarteRecord }
+  | { kind: "medical"; data: MedicalKarteRecord };
+
 export default function PlayerListPage() {
   const [players, setPlayers] = useState<PlayerInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [recentKartes, setRecentKartes] = useState<KarteRecord[]>([]);
+  const [allRecent, setAllRecent] = useState<RecentItem[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [activeTab, setActiveTab] = useState<"players" | "recent">("players");
-  const [quickViewKarte, setQuickViewKarte] = useState<KarteRecord | null>(null);
+  const [quickViewItem, setQuickViewItem] = useState<RecentItem | null>(null);
 
   useEffect(() => {
     fetch("/api/players")
@@ -46,11 +50,16 @@ export default function PlayerListPage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
 
-    fetch("/api/karte/recent")
-      .then((r) => r.ok ? r.json() : [])
-      .then(setRecentKartes)
-      .catch(() => {})
-      .finally(() => setLoadingRecent(false));
+    Promise.all([
+      fetch("/api/karte/recent").then((r) => r.ok ? r.json() : []).catch(() => []),
+      fetch("/api/medical-karte/recent").then((r) => r.ok ? r.json() : []).catch(() => []),
+    ]).then(([physical, medical]) => {
+      const merged: RecentItem[] = [
+        ...(physical as KarteRecord[]).map((d) => ({ kind: "physical" as const, data: d })),
+        ...(medical as MedicalKarteRecord[]).map((d) => ({ kind: "medical" as const, data: d })),
+      ].sort((a, b) => b.data.createdAt.localeCompare(a.data.createdAt));
+      setAllRecent(merged);
+    }).finally(() => setLoadingRecent(false));
   }, []);
 
   const grouped = players.reduce<Record<string, PlayerInfo[]>>((acc, p) => {
@@ -105,7 +114,7 @@ export default function PlayerListPage() {
   const recentPanel = (
     <div className="min-w-0">
       <div className="flex items-center gap-2 mb-3">
-        <h2 className="text-sm font-bold text-gray-700">最近のカルテ</h2>
+        <h2 className="text-sm font-bold text-gray-700">最近の記録</h2>
         <span className="text-[10px] font-semibold bg-orange-50 text-orange-500 px-2 py-0.5 rounded-full border border-orange-100">
           直近6日
         </span>
@@ -113,46 +122,90 @@ export default function PlayerListPage() {
 
       {loadingRecent ? (
         <div className="flex justify-center py-8"><Spinner /></div>
-      ) : recentKartes.length === 0 ? (
+      ) : allRecent.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-gray-300 gap-2">
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p className="text-xs">直近6日のカルテはありません</p>
+          <p className="text-xs">直近6日の記録はありません</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {recentKartes.map((r) => (
+          {allRecent.map((item) => (
             <button
-              key={r.id}
+              key={item.data.id}
               type="button"
-              onClick={() => setQuickViewKarte(r)}
+              onClick={() => setQuickViewItem(item)}
               className="bg-white border border-gray-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow text-left w-full"
             >
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold text-orange-400">{formatRelativeDate(r.createdAt)}</span>
-                <span className="text-[10px] text-gray-400">{formatDate(r.createdAt)}</span>
-              </div>
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="font-semibold text-sm text-gray-800">{r.clientName}</span>
-                <span className="text-xs text-gray-400">{r.trainerName}</span>
-              </div>
-              {r.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-1.5">
-                  {r.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-medium border border-blue-100"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[10px] font-bold ${
+                    item.kind === "physical" ? "text-orange-400" : "text-green-500"
+                  }`}>
+                    {formatRelativeDate(item.data.createdAt)}
+                  </span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                    item.kind === "physical"
+                      ? "bg-blue-50 text-blue-600 border-blue-100"
+                      : "bg-green-50 text-green-600 border-green-100"
+                  }`}>
+                    {item.kind === "physical" ? "フィジカル" : "メディカル"}
+                  </span>
                 </div>
-              )}
-              {r.trainingContent && (
-                <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
-                  {r.trainingContent}
-                </p>
+                <span className="text-[10px] text-gray-400">{formatDate(item.data.createdAt)}</span>
+              </div>
+
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className="font-semibold text-sm text-gray-800">{item.data.clientName}</span>
+                <span className="text-xs text-gray-400">{item.data.trainerName}</span>
+              </div>
+
+              {item.kind === "physical" ? (
+                <>
+                  {item.data.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-1.5">
+                      {item.data.tags.map((tag) => (
+                        <span key={tag} className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-medium border border-blue-100">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {item.data.trainingContent && (
+                    <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                      {item.data.trainingContent}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {item.data.chiefComplaint && (
+                    <p className="text-[11px] text-gray-500 line-clamp-1 leading-relaxed mb-1">
+                      <span className="font-semibold text-orange-500">主訴: </span>{item.data.chiefComplaint}
+                    </p>
+                  )}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {item.data.acupuncturePresent && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                        item.data.acupuncturePresent === "あり"
+                          ? "bg-red-50 text-red-600 border-red-200"
+                          : "bg-gray-100 text-gray-500 border-gray-200"
+                      }`}>
+                        针{item.data.acupuncturePresent}
+                      </span>
+                    )}
+                    {item.data.treatmentScope && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                        item.data.treatmentScope === "全身治療"
+                          ? "bg-blue-50 text-blue-600 border-blue-200"
+                          : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      }`}>
+                        {item.data.treatmentScope}
+                      </span>
+                    )}
+                  </div>
+                </>
               )}
             </button>
           ))}
@@ -186,12 +239,12 @@ export default function PlayerListPage() {
             activeTab === "recent" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-400"
           }`}
         >
-          最新のカルテ
-          {recentKartes.length > 0 && (
+          最新の記録
+          {allRecent.length > 0 && (
             <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
               activeTab === "recent" ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"
             }`}>
-              {recentKartes.length}
+              {allRecent.length}
             </span>
           )}
         </button>
@@ -208,10 +261,10 @@ export default function PlayerListPage() {
         </div>
       </main>
 
-      {quickViewKarte && (
+      {quickViewItem && (
         <div
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 px-4"
-          onClick={() => setQuickViewKarte(null)}
+          onClick={() => setQuickViewItem(null)}
         >
           <div
             className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-md max-h-[85vh] overflow-y-auto"
@@ -219,13 +272,22 @@ export default function PlayerListPage() {
           >
             <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
               <div>
-                <p className="text-sm font-bold text-gray-800">{quickViewKarte.clientName}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {formatDate(quickViewKarte.createdAt)} {formatTime(quickViewKarte.createdAt)}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="text-sm font-bold text-gray-800">{quickViewItem.data.clientName}</p>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                    quickViewItem.kind === "physical"
+                      ? "bg-blue-50 text-blue-600 border-blue-100"
+                      : "bg-green-50 text-green-600 border-green-100"
+                  }`}>
+                    {quickViewItem.kind === "physical" ? "フィジカル" : "メディカル"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400">
+                  {formatDate(quickViewItem.data.createdAt)} {formatTime(quickViewItem.data.createdAt)}
                 </p>
               </div>
               <button
-                onClick={() => setQuickViewKarte(null)}
+                onClick={() => setQuickViewItem(null)}
                 className="text-gray-400 hover:text-gray-600 p-1 -m-1"
                 aria-label="閉じる"
               >
@@ -238,81 +300,131 @@ export default function PlayerListPage() {
             <div className="p-5 flex flex-col gap-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-gray-400">担当トレーナー</span>
-                <span className="text-sm font-semibold text-gray-700">{quickViewKarte.trainerName}</span>
+                <span className="text-sm font-semibold text-gray-700">{quickViewItem.data.trainerName}</span>
               </div>
 
-              {quickViewKarte.tags.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-1">タグ</p>
-                  <div className="flex flex-wrap gap-1">
-                    {quickViewKarte.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
-                      >
-                        {tag}
+              {quickViewItem.kind === "physical" ? (
+                <>
+                  {quickViewItem.data.tags.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-1">タグ</p>
+                      <div className="flex flex-wrap gap-1">
+                        {quickViewItem.data.tags.map((tag) => (
+                          <span key={tag} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {quickViewItem.data.trainingContent && (
+                    <div>
+                      <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
+                      <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                        {quickViewItem.data.trainingContent}
+                      </p>
+                    </div>
+                  )}
+
+                  {quickViewItem.data.chiefComplaint && (
+                    <div>
+                      <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
+                      <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                        {quickViewItem.data.chiefComplaint}
+                      </p>
+                    </div>
+                  )}
+
+                  {quickViewItem.data.overallAssessment && (
+                    <div>
+                      <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
+                      <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                        {quickViewItem.data.overallAssessment}
+                      </p>
+                    </div>
+                  )}
+
+                  {quickViewItem.data.mediaUrls && quickViewItem.data.mediaUrls.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {quickViewItem.data.mediaUrls.map((url, i) => {
+                        const isVideo = /\.(mp4|mov|webm|avi)(\?|$)/i.test(url);
+                        return isVideo ? (
+                          <video
+                            key={i}
+                            src={url}
+                            className="w-20 h-16 object-cover rounded-lg border border-gray-100"
+                            controls
+                            preload="metadata"
+                          />
+                        ) : (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-20 h-16 object-cover rounded-lg border border-gray-100 hover:opacity-90 transition-opacity"
+                            />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {quickViewItem.data.chiefComplaint && (
+                    <div>
+                      <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
+                      <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                        {quickViewItem.data.chiefComplaint}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">针治療</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                        quickViewItem.data.acupuncturePresent === "あり"
+                          ? "bg-red-50 text-red-600 border-red-200"
+                          : "bg-gray-100 text-gray-500 border-gray-200"
+                      }`}>
+                        {quickViewItem.data.acupuncturePresent || "なし"}
                       </span>
-                    ))}
+                      {quickViewItem.data.acupuncturePresent === "あり" && quickViewItem.data.acupunctureLocation && (
+                        <span className="text-[10px] text-gray-600">{quickViewItem.data.acupunctureLocation}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
+
+                  {quickViewItem.data.treatmentScope && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-0.5">治療範囲</p>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                        quickViewItem.data.treatmentScope === "全身治療"
+                          ? "bg-blue-50 text-blue-600 border-blue-200"
+                          : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      }`}>
+                        {quickViewItem.data.treatmentScope}
+                      </span>
+                    </div>
+                  )}
+
+                  {quickViewItem.data.overallAssessment && (
+                    <div>
+                      <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
+                      <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                        {quickViewItem.data.overallAssessment}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
-              {quickViewKarte.trainingContent && (
-                <div>
-                  <p className="text-xs font-semibold text-blue-500 mb-0.5">トレーニング内容</p>
-                  <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
-                    {quickViewKarte.trainingContent}
-                  </p>
-                </div>
-              )}
-
-              {quickViewKarte.chiefComplaint && (
-                <div>
-                  <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
-                  <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
-                    {quickViewKarte.chiefComplaint}
-                  </p>
-                </div>
-              )}
-
-              {quickViewKarte.overallAssessment && (
-                <div>
-                  <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
-                  <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
-                    {quickViewKarte.overallAssessment}
-                  </p>
-                </div>
-              )}
-
-              {quickViewKarte.mediaUrls && quickViewKarte.mediaUrls.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {quickViewKarte.mediaUrls.map((url, i) => {
-                    const isVideo = /\.(mp4|mov|webm|avi)(\?|$)/i.test(url);
-                    return isVideo ? (
-                      <video
-                        key={i}
-                        src={url}
-                        className="w-20 h-16 object-cover rounded-lg border border-gray-100"
-                        controls
-                        preload="metadata"
-                      />
-                    ) : (
-                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={url}
-                          alt=""
-                          className="w-20 h-16 object-cover rounded-lg border border-gray-100 hover:opacity-90 transition-opacity"
-                        />
-                      </a>
-                    );
-                  })}
-                </div>
-              )}
-
-              {quickViewKarte.playerId && (
+              {quickViewItem.data.playerId && (
                 <Link
-                  href={`/player/${quickViewKarte.playerId}`}
+                  href={`/player/${quickViewItem.data.playerId}`}
                   className="mt-1 text-center text-sm text-blue-600 font-semibold hover:underline"
                 >
                   選手ページを開く →

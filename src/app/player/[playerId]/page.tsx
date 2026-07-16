@@ -115,17 +115,13 @@ export default function KarteRecordPage() {
       if (item.type === "blood") return item.data.testDate === date;
       return item.data.createdAt.startsWith(date);
     });
+    if (candidates.length === 0) return;
+    const oldest = candidates.reduce((a, b) => (a.sortKey < b.sortKey ? a : b));
+    const id = anchorId(oldest);
     requestAnimationFrame(() => {
-      for (const item of candidates) {
-        const id = anchorId(item);
-        const elements = document.querySelectorAll(`[data-anchor-id="${id}"]`);
-        for (const el of elements) {
-          if ((el as HTMLElement).offsetParent !== null) {
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
-            return;
-          }
-        }
-      }
+      const elements = document.querySelectorAll<HTMLElement>(`[data-anchor-id="${id}"]`);
+      const visible = Array.from(elements).find((el) => el.offsetParent !== null);
+      (visible ?? elements[0])?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [allItems]);
 

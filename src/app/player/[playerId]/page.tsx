@@ -8,6 +8,7 @@ import KarteForm from "@/components/KarteForm";
 import KarteCard from "@/components/KarteCard";
 import MedicalKarteCard from "@/components/MedicalKarteCard";
 import BloodTestCard from "@/components/BloodTestCard";
+import PlayerProfileForm from "@/components/PlayerProfileForm";
 import MiniCalendar from "@/components/MiniCalendar";
 
 function Spinner() {
@@ -92,6 +93,7 @@ export default function KarteRecordPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "history">("form");
+  const [formTab, setFormTab] = useState<"karte" | "profile">("karte");
   const [copiedTags, setCopiedTags] = useState<string[]>([]);
   const [copiedTrainingContent, setCopiedTrainingContent] = useState("");
 
@@ -252,6 +254,39 @@ export default function KarteRecordPage() {
     </div>
   );
 
+  const formTabs = (
+    <div className="flex border-b border-gray-100 mb-4 -mt-1">
+      <button
+        onClick={() => setFormTab("karte")}
+        className={`flex-1 py-2 text-xs font-semibold transition-colors border-b-2 ${
+          formTab === "karte" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-400"
+        }`}
+      >
+        新規カルテ
+      </button>
+      <button
+        onClick={() => setFormTab("profile")}
+        className={`flex-1 py-2 text-xs font-semibold transition-colors border-b-2 ${
+          formTab === "profile" ? "border-gray-700 text-gray-700" : "border-transparent text-gray-400"
+        }`}
+      >
+        プロフィール
+      </button>
+    </div>
+  );
+
+  const formContent = !loadingPlayer && player && (
+    <>
+      {formTabs}
+      {formTab === "karte" && (
+        <KarteForm playerId={playerId} playerName={playerName} initialTags={copiedTags} initialTrainingContent={copiedTrainingContent} onSubmit={handleSubmit} />
+      )}
+      {formTab === "profile" && (
+        <PlayerProfileForm playerId={playerId} playerName={playerName} />
+      )}
+    </>
+  );
+
   return (
     <div className="h-screen overflow-hidden bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
@@ -301,9 +336,7 @@ export default function KarteRecordPage() {
       <div className="md:hidden flex-1 overflow-hidden flex flex-col min-h-0">
         {activeTab === "form" ? (
           <div className="flex-1 overflow-y-auto p-4">
-            {!loadingPlayer && player && (
-              <KarteForm playerId={playerId} playerName={playerName} initialTags={copiedTags} initialTrainingContent={copiedTrainingContent} onSubmit={handleSubmit} />
-            )}
+            {formContent}
           </div>
         ) : (
           historyPanel
@@ -319,9 +352,7 @@ export default function KarteRecordPage() {
             </p>
           </div>
           <div className="flex-1 overflow-y-auto p-6">
-            {!loadingPlayer && player && (
-              <KarteForm playerId={playerId} playerName={playerName} initialTags={copiedTags} initialTrainingContent={copiedTrainingContent} onSubmit={handleSubmit} />
-            )}
+            {formContent}
           </div>
         </section>
 

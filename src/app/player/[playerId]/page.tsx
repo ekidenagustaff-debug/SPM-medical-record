@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { KarteFormData, KarteRecord, PlayerInfo, RaceResult } from "@/types/karte";
@@ -43,7 +43,7 @@ function formatRaceDate(dateStr: string): string {
 
 function RaceResultCard({ result }: { result: RaceResult }) {
   return (
-    <div id={`race-${result.id}`} className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
+    <div data-anchor-id={`race-${result.id}`} className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
         <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">大会</span>
         <span className="text-xs text-gray-400">{formatRaceDate(result.date)}</span>
@@ -96,44 +96,44 @@ export default function KarteRecordPage() {
   const [loadingPlayer, setLoadingPlayer] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "history">("form");
   const [copiedTags, setCopiedTags] = useState<string[]>([]);
   const [copiedTrainingContent, setCopiedTrainingContent] = useState("");
 
-  const historyPanelRef = useRef<HTMLDivElement>(null);
-
   const karteDates = records.map((r) => r.createdAt.slice(0, 10));
   const raceDates = raceResults.map((r) => r.date).filter(Boolean);
 
-  const scrollToRace = useCallback((date: string) => {
-    const target = raceResults.find((r) => r.date === date);
-    if (!target) return;
+  const jumpToCard = useCallback((anchorId: string) => {
     requestAnimationFrame(() => {
-      const el = document.getElementById(`race-${target.id}`);
-      if (!el) return;
-      const panel = historyPanelRef.current;
-      if (panel) {
-        const top = el.offsetTop - panel.offsetTop - 8;
-        panel.scrollTo({ top, behavior: "smooth" });
-      } else {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      const candidates = document.querySelectorAll<HTMLElement>(`[data-anchor-id="${anchorId}"]`);
+      const visible = Array.from(candidates).find((el) => el.offsetParent !== null);
+      (visible ?? candidates[0])?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }, [raceResults]);
+  }, []);
+
+  const jumpToRace = useCallback(
+    (dateStr: string) => {
+      const target = raceResults.find((r) => r.date === dateStr);
+      if (!target) return;
+      jumpToCard(`race-${target.id}`);
+    },
+    [raceResults, jumpToCard]
+  );
+
+  const jumpToKarte = useCallback(
+    (dateStr: string) => {
+      const matches = records.filter((r) => r.createdAt.startsWith(dateStr));
+      if (matches.length === 0) return;
+      const oldest = matches.reduce((a, b) => (a.createdAt < b.createdAt ? a : b));
+      jumpToCard(`karte-${oldest.id}`);
+    },
+    [records, jumpToCard]
+  );
 
   const allItems: HistoryItem[] = [
     ...records.map((r) => ({ type: "karte" as const, sortKey: r.createdAt, data: r })),
     ...raceResults.map((r) => ({ type: "race" as const, sortKey: r.date, data: r })),
   ].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
-
-  const filteredItems = selectedDate
-    ? allItems.filter((item) =>
-        item.type === "karte"
-          ? item.data.createdAt.startsWith(selectedDate)
-          : item.data.date === selectedDate
-      )
-    : allItems;
 
   const karteIndexMap = new Map(
     records
@@ -212,13 +212,9 @@ export default function KarteRecordPage() {
       </svg>
       <p className="text-sm">まだ記録はありません</p>
     </div>
-  ) : filteredItems.length === 0 ? (
-    <p className="text-sm text-gray-400 text-center py-6">
-      {selectedDate?.replace(/-/g, "/")} の記録はありません
-    </p>
   ) : (
     <div className="flex flex-col gap-3">
-      {filteredItems.map((item) =>
+      {allItems.map((item) =>
         item.type === "karte" ? (
           <KarteCard
             key={item.data.id}
@@ -235,15 +231,14 @@ export default function KarteRecordPage() {
   );
 
   const historyPanel = (
-    <div ref={historyPanelRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
       {!loadingHistory && !historyError && (
         <MiniCalendar
           karteDates={karteDates}
           raceDates={raceDates}
           raceResults={raceResults}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          onScrollToRace={scrollToRace}
+          onJumpToKarte={jumpToKarte}
+          onJumpToRace={jumpToRace}
         />
       )}
       {historyContent}

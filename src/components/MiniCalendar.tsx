@@ -7,9 +7,8 @@ interface MiniCalendarProps {
   karteDates: string[];
   raceDates?: string[];
   raceResults?: RaceResult[];
-  selectedDate: string | null;
-  onSelectDate: (date: string | null) => void;
-  onScrollToRace?: (date: string) => void;
+  onJumpToKarte?: (date: string) => void;
+  onJumpToRace?: (date: string) => void;
 }
 
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -22,9 +21,8 @@ export default function MiniCalendar({
   karteDates,
   raceDates = [],
   raceResults = [],
-  selectedDate,
-  onSelectDate,
-  onScrollToRace,
+  onJumpToKarte,
+  onJumpToRace,
 }: MiniCalendarProps) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -94,23 +92,21 @@ export default function MiniCalendar({
           const hasKarte = karteSet.has(dateStr);
           const hasRace = raceSet.has(dateStr);
           const hasActivity = hasKarte || hasRace;
-          const isSelected = selectedDate === dateStr && hasKarte && !hasRace;
           const isToday = dateStr === todayStr;
           const col = i % 7;
           const dayRaces = raceByDate[dateStr] ?? [];
 
           const handleClick = () => {
-            if (!hasActivity) return;
             if (hasRace) {
-              onScrollToRace?.(dateStr);
-            } else {
-              onSelectDate(isSelected ? null : dateStr);
+              onJumpToRace?.(dateStr);
+              return;
+            }
+            if (hasKarte) {
+              onJumpToKarte?.(dateStr);
             }
           };
 
-          const textColor = isSelected
-            ? "text-white"
-            : col === 0
+          const textColor = col === 0
             ? "text-red-400"
             : col === 6
             ? "text-blue-500"
@@ -125,21 +121,15 @@ export default function MiniCalendar({
               disabled={!hasActivity}
               className={`
                 flex flex-col items-center pt-1 pb-1 px-0.5 w-full rounded transition-colors min-h-[2.75rem]
-                ${isSelected ? "bg-blue-600" : ""}
-                ${!isSelected && hasActivity ? "hover:bg-orange-50 cursor-pointer" : ""}
-                ${hasKarte && !hasRace && !isSelected ? "hover:bg-blue-50" : ""}
-                ${!hasActivity ? "cursor-default" : ""}
-                ${!isSelected && isToday ? "ring-1 ring-blue-400" : ""}
+                ${hasActivity ? "hover:bg-orange-50 cursor-pointer" : "cursor-default"}
+                ${hasKarte && !hasRace ? "hover:bg-blue-50" : ""}
+                ${isToday ? "ring-1 ring-blue-400" : ""}
               `}
             >
               <span className={`text-[11px] font-medium leading-none mb-0.5 ${textColor}`}>{day}</span>
 
               {hasKarte && (
-                <span
-                  className={`text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 ${
-                    isSelected ? "bg-white/20 text-white" : "bg-blue-100 text-blue-600"
-                  }`}
-                >
+                <span className="text-[7px] font-bold text-center px-0.5 py-0.5 rounded leading-none w-full truncate mb-0.5 bg-blue-100 text-blue-600">
                   パーソナル
                 </span>
               )}
@@ -160,14 +150,6 @@ export default function MiniCalendar({
           );
         })}
       </div>
-
-      {selectedDate && (
-        <div className="mt-2 text-center border-t border-gray-50 pt-2">
-          <button onClick={() => onSelectDate(null)} className="text-[10px] text-blue-500 hover:underline">
-            すべて表示に戻る
-          </button>
-        </div>
-      )}
     </div>
   );
 }

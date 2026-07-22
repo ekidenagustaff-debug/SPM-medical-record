@@ -88,6 +88,11 @@ function pageToKarte(page: PageObjectResponse): KarteRecord {
     buinProp?.type === "relation" && buinProp.relation.length > 0
       ? buinProp.relation[0].id
       : undefined;
+  const treatmentDateProp = p["施術日"];
+  const treatmentDate =
+    treatmentDateProp?.type === "date" && treatmentDateProp.date?.start
+      ? treatmentDateProp.date.start.slice(0, 10)
+      : "";
   return {
     id: page.id,
     playerId,
@@ -98,7 +103,7 @@ function pageToKarte(page: PageObjectResponse): KarteRecord {
     overallAssessment: extractText(p["総評"]),
     tags: p["タグ"] ? extractTags(p["タグ"]) : [],
     mediaUrls: p["メディア"] ? extractFiles(p["メディア"]) : [],
-    createdAt: page.created_time,
+    createdAt: treatmentDate ? `${treatmentDate}T00:00:00.000Z` : page.created_time,
   };
 }
 

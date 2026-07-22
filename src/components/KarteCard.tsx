@@ -63,6 +63,12 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
           <p className="text-xs text-gray-400 mb-0.5">担当トレーナー</p>
           <p className="text-sm font-semibold text-gray-800">{record.trainerName}</p>
         </div>
+        {record.location && (
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">場所</p>
+            <p className="text-sm font-semibold text-gray-800">{record.location}</p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-2">
@@ -137,11 +143,34 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
           ) : null}
         </div>
         <div>
-          {record.overallAssessment ? (
+          {record.memo ? (
             <>
-              <p className="text-xs font-semibold text-green-500 mb-0.5">総評</p>
+              <p className="text-xs font-semibold text-green-500 mb-0.5">memo</p>
               <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
-                {record.overallAssessment}
+                {record.memo}
+              </p>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          {record.physicalCheck ? (
+            <>
+              <p className="text-xs font-semibold text-purple-500 mb-0.5">状態（フィジカルチェック）</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+                {record.physicalCheck}
+              </p>
+            </>
+          ) : null}
+        </div>
+        <div>
+          {record.procedureContent ? (
+            <>
+              <p className="text-xs font-semibold text-teal-500 mb-0.5">実施内容</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+                {record.procedureContent}
               </p>
             </>
           ) : null}

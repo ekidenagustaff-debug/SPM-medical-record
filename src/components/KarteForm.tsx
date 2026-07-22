@@ -61,12 +61,21 @@ async function compressImage(file: File): Promise<File> {
   });
 }
 
-const EMPTY = { trainerName: "", chiefComplaint: "", trainingContent: "", overallAssessment: "" };
+const EMPTY = {
+  trainerName: "",
+  location: "",
+  chiefComplaint: "",
+  physicalCheck: "",
+  procedureContent: "",
+  trainingContent: "",
+  memo: "",
+};
 
 export default function KarteForm({ playerId, playerName, initialTags, initialTrainingContent, onSubmit }: KarteFormProps) {
   const [form, setForm] = useState(EMPTY);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [trainerOptions, setTrainerOptions] = useState<string[]>([]);
+  const [locationOptions, setLocationOptions] = useState<string[]>([]);
   const [tagOptions, setTagOptions] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -77,6 +86,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
 
   useEffect(() => {
     fetch("/api/trainers").then((r) => r.json()).then(setTrainerOptions).catch(() => {});
+    fetch("/api/locations").then((r) => r.json()).then(setLocationOptions).catch(() => {});
     fetch("/api/tags").then((r) => r.json()).then(setTagOptions).catch(() => {});
   }, []);
 
@@ -215,6 +225,22 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         </select>
       </div>
 
+      {/* 場所 */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">場所</label>
+        <select
+          name="location"
+          value={form.location}
+          onChange={handleChange}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white text-gray-800"
+        >
+          <option value="">場所を選択...</option>
+          {locationOptions.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+      </div>
+
       {/* タグ */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">タグ</label>
@@ -269,6 +295,36 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
+      {/* 状態（フィジカルチェック） */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          状態（フィジカルチェック）
+        </label>
+        <textarea
+          name="physicalCheck"
+          value={form.physicalCheck}
+          onChange={handleChange}
+          rows={3}
+          placeholder="可動域やアライメントなど、フィジカルチェックの所見..."
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+        />
+      </div>
+
+      {/* 実施内容 */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          実施内容
+        </label>
+        <textarea
+          name="procedureContent"
+          value={form.procedureContent}
+          onChange={handleChange}
+          rows={3}
+          placeholder="施術・ケアとして実施した内容..."
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+        />
+      </div>
+
       {/* トレーニング内容 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -284,12 +340,12 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         />
       </div>
 
-      {/* 総評 */}
+      {/* memo */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">総評</label>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">memo</label>
         <textarea
-          name="overallAssessment"
-          value={form.overallAssessment}
+          name="memo"
+          value={form.memo}
           onChange={handleChange}
           rows={3}
           placeholder="今日のセッション全体の評価、次回へのメモなど..."

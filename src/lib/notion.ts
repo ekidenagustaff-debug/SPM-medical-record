@@ -93,14 +93,18 @@ function pageToKarte(page: PageObjectResponse): KarteRecord {
     treatmentDateProp?.type === "date" && treatmentDateProp.date?.start
       ? treatmentDateProp.date.start.slice(0, 10)
       : "";
+  const memo = extractText(p["memo"]) || extractText(p["総評"]);
   return {
     id: page.id,
     playerId,
     clientName: extractText(p["クライアント名"]),
     trainerName: extractText(p["担当トレーナー名"]),
+    location: extractText(p["場所"]),
     chiefComplaint: extractText(p["主訴"]),
+    physicalCheck: extractText(p["状態（フィジカルチェック）"]),
+    procedureContent: extractText(p["実施内容"]),
     trainingContent: extractText(p["トレーニング内容"]),
-    overallAssessment: extractText(p["総評"]),
+    memo,
     tags: p["タグ"] ? extractTags(p["タグ"]) : [],
     mediaUrls: p["メディア"] ? extractFiles(p["メディア"]) : [],
     createdAt: treatmentDate ? `${treatmentDate}T00:00:00.000Z` : page.created_time,
@@ -145,9 +149,12 @@ export async function createKarteRecord(data: KarteFormData): Promise<KarteRecor
     properties: {
       "クライアント名": { title: richText(data.clientName) },
       "担当トレーナー名": { select: { name: data.trainerName } },
+      ...(data.location ? { "場所": { select: { name: data.location } } } : {}),
       "主訴": { rich_text: richText(data.chiefComplaint) },
+      "状態（フィジカルチェック）": { rich_text: richText(data.physicalCheck) },
+      "実施内容": { rich_text: richText(data.procedureContent) },
       "トレーニング内容": { rich_text: richText(data.trainingContent) },
-      "総評": { rich_text: richText(data.overallAssessment) },
+      "memo": { rich_text: richText(data.memo) },
       "タグ": { multi_select: data.tags.map((name) => ({ name })) },
       "メディア": {
         files: data.mediaUrls.map((url) => ({
@@ -195,6 +202,13 @@ export async function getTagOptions(): Promise<string[]> {
   const db = (await notion.databases.retrieve({ database_id: DATABASE_ID })) as DatabaseObjectResponse;
   const prop = db.properties["タグ"];
   if (prop?.type === "multi_select") return prop.multi_select.options.map((o) => o.name);
+  return [];
+}
+
+export async function getLocationOptions(): Promise<string[]> {
+  const db = (await notion.databases.retrieve({ database_id: DATABASE_ID })) as DatabaseObjectResponse;
+  const prop = db.properties["場所"];
+  if (prop?.type === "select") return prop.select.options.map((o) => o.name);
   return [];
 }
 

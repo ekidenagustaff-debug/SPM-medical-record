@@ -201,7 +201,10 @@ export async function getKartesByPlayer(playerId: string): Promise<KarteRecord[]
     sorts: [{ timestamp: "created_time", direction: "descending" }],
     page_size: 100,
   });
-  return (response.results as PageObjectResponse[]).map(pageToKarte);
+  const records = (response.results as PageObjectResponse[]).map(pageToKarte);
+  // 施術日を優先表示しているため、並び順もcreated_timeではなく表示日時(createdAt)基準に揃える
+  // (過去データの一括移行では施術日と実際のNotionページ作成時刻が一致しないため)
+  return records.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getRecentKartes(days = 6): Promise<KarteRecord[]> {

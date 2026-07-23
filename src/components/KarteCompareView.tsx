@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KarteRecord } from "@/types/karte";
 
 interface KarteCompareViewProps {
@@ -52,11 +52,28 @@ function CopyButton({ copied, onClick }: { copied: boolean; onClick: () => void 
 
 export default function KarteCompareView({ records, onCopyTags, onCopyTrainingContent, onEdit }: KarteCompareViewProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const flashCopied = (key: string) => {
     setCopiedKey(key);
     setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 2000);
   };
+
+  // 主訴などの縦スクロールセル上にカーソルがあっても、横方向優位のホイール操作は
+  // 常にこのコンテナの横スクロールとして扱う（React の onWheel は passive のため
+  // preventDefault できず、ネイティブリスナーで登録する）
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        el.scrollLeft += e.deltaX;
+        e.preventDefault();
+      }
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, []);
 
   if (records.length === 0) {
     return (
@@ -78,7 +95,7 @@ export default function KarteCompareView({ records, onCopyTags, onCopyTrainingCo
   const labelTextClass = "[writing-mode:vertical-rl] mx-auto";
 
   return (
-    <div className="h-full overflow-auto overscroll-contain rounded-xl border border-gray-200 bg-white">
+    <div ref={scrollRef} className="h-full overflow-auto overscroll-contain rounded-xl border border-gray-200 bg-white">
       <div className="grid w-max min-w-full" style={{ gridTemplateColumns }}>
         {/* ヘッダー行（日付・担当・場所・タグ） */}
         <div className={`sticky top-0 left-0 z-30 bg-gray-50 border-b border-r border-gray-200 px-1 py-2 ${labelCellClass}`}>

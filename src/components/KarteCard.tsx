@@ -83,36 +83,45 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
         )}
       </div>
 
+      {record.tags && record.tags.length > 0 && (
+        <div className="mb-2">
+          <div className="flex items-center gap-1.5 mb-1">
+            <p className="text-xs font-semibold text-gray-500">タグ</p>
+            {onCopyTags && (
+              <button
+                type="button"
+                onClick={handleCopyTags}
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                  copiedTags
+                    ? "bg-green-100 text-green-600"
+                    : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+                }`}
+              >
+                {copiedTags ? "✓ コピー済" : "コピー"}
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {record.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
-          {record.tags && record.tags.length > 0 ? (
+          {record.chiefComplaint ? (
             <>
-              <div className="flex items-center gap-1.5 mb-1">
-                <p className="text-xs font-semibold text-gray-500">タグ</p>
-                {onCopyTags && (
-                  <button
-                    type="button"
-                    onClick={handleCopyTags}
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
-                      copiedTags
-                        ? "bg-green-100 text-green-600"
-                        : "bg-gray-100 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
-                    }`}
-                  >
-                    {copiedTags ? "✓ コピー済" : "コピー"}
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {record.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                {record.chiefComplaint}
+              </p>
             </>
           ) : null}
         </div>
@@ -145,29 +154,6 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
 
       <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
-          {record.chiefComplaint ? (
-            <>
-              <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
-                {record.chiefComplaint}
-              </p>
-            </>
-          ) : null}
-        </div>
-        <div>
-          {record.memo ? (
-            <>
-              <p className="text-xs font-semibold text-green-500 mb-0.5">memo</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
-                {record.memo}
-              </p>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 mb-2">
-        <div>
           {record.physicalCheck ? (
             <>
               <p className="text-xs font-semibold text-purple-500 mb-0.5">状態（フィジカルチェック）</p>
@@ -188,6 +174,15 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
           ) : null}
         </div>
       </div>
+
+      {record.memo && (
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-green-500 mb-0.5">memo</p>
+          <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+            {record.memo}
+          </p>
+        </div>
+      )}
 
       {record.mediaUrls && record.mediaUrls.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">

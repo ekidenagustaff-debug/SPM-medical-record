@@ -38,3 +38,10 @@ yarn-error.log*
 
 # typescript
 next-env.d.ts
+
+# Evernote移行スクリプトの入出力(実在のクライアントの医療/身体データを含むため絶対にコミットしない)
+/scripts/migrate/data/
+*.enex
+!/scripts/migrate/sample_data/sample.enex
+__pycache__/
+*.pyc

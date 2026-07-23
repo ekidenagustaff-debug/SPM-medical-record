@@ -169,6 +169,31 @@ export async function createKarteRecord(data: KarteFormData): Promise<KarteRecor
   return pageToKarte(response);
 }
 
+export async function updateKarteRecord(id: string, data: KarteFormData): Promise<KarteRecord> {
+  const response = (await notion.pages.update({
+    page_id: id,
+    properties: {
+      "クライアント名": { title: richText(data.clientName) },
+      "担当トレーナー名": { select: { name: data.trainerName } },
+      "場所": data.location ? { select: { name: data.location } } : { select: null },
+      "主訴": { rich_text: richText(data.chiefComplaint) },
+      "状態（フィジカルチェック）": { rich_text: richText(data.physicalCheck) },
+      "実施内容": { rich_text: richText(data.procedureContent) },
+      "トレーニング内容": { rich_text: richText(data.trainingContent) },
+      "memo": { rich_text: richText(data.memo) },
+      "タグ": { multi_select: data.tags.map((name) => ({ name })) },
+      "メディア": {
+        files: data.mediaUrls.map((url) => ({
+          type: "external" as const,
+          name: url.split("/").pop()?.split("?")[0] ?? "media",
+          external: { url },
+        })),
+      },
+    },
+  })) as PageObjectResponse;
+  return pageToKarte(response);
+}
+
 export async function getKartesByPlayer(playerId: string): Promise<KarteRecord[]> {
   const response = await notion.databases.query({
     database_id: DATABASE_ID,

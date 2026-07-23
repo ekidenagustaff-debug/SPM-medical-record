@@ -6,6 +6,7 @@ interface KarteCardProps {
   index: number;
   onCopyTags?: (tags: string[]) => void;
   onCopyTrainingContent?: (content: string) => void;
+  onEdit?: (record: KarteRecord) => void;
 }
 
 function formatDate(iso: string): string {
@@ -23,7 +24,7 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function KarteCard({ record, index, onCopyTags, onCopyTrainingContent }: KarteCardProps) {
+export default function KarteCard({ record, index, onCopyTags, onCopyTrainingContent, onEdit }: KarteCardProps) {
   const [copiedTags, setCopiedTags] = useState(false);
   const [copiedContent, setCopiedContent] = useState(false);
 
@@ -52,6 +53,17 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
             {formatDate(record.createdAt)} {formatTime(record.createdAt)}
           </span>
         </div>
+        {onEdit && (
+          <button
+            onClick={() => onEdit(record)}
+            className="text-gray-400 hover:text-blue-600 p-1 -m-1 transition-colors"
+            aria-label="編集"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
@@ -123,7 +135,7 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
                   </button>
                 )}
               </div>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-3">
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
                 {record.trainingContent}
               </p>
             </>
@@ -136,7 +148,7 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
           {record.chiefComplaint ? (
             <>
               <p className="text-xs font-semibold text-orange-500 mb-0.5">主訴</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
                 {record.chiefComplaint}
               </p>
             </>
@@ -146,7 +158,7 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
           {record.memo ? (
             <>
               <p className="text-xs font-semibold text-green-500 mb-0.5">memo</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
                 {record.memo}
               </p>
             </>
@@ -159,7 +171,7 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
           {record.physicalCheck ? (
             <>
               <p className="text-xs font-semibold text-purple-500 mb-0.5">状態（フィジカルチェック）</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
                 {record.physicalCheck}
               </p>
             </>
@@ -169,7 +181,7 @@ export default function KarteCard({ record, index, onCopyTags, onCopyTrainingCon
           {record.procedureContent ? (
             <>
               <p className="text-xs font-semibold text-teal-500 mb-0.5">実施内容</p>
-              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed line-clamp-2">
+              <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
                 {record.procedureContent}
               </p>
             </>

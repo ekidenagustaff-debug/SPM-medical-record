@@ -99,6 +99,7 @@ export default function KarteRecordPage() {
   const [formCollapsed, setFormCollapsed] = useState(false);
   const [copiedTags, setCopiedTags] = useState<string[]>([]);
   const [copiedTrainingContent, setCopiedTrainingContent] = useState("");
+  const [editingKarte, setEditingKarte] = useState<KarteRecord | null>(null);
 
   const historyPanelRef = useRef<HTMLDivElement>(null);
 
@@ -192,6 +193,18 @@ export default function KarteRecordPage() {
     setActiveTab("history");
   };
 
+  const handleUpdate = async (data: KarteFormData) => {
+    if (!editingKarte) return;
+    const res = await fetch(`/api/karte/${editingKarte.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("更新失敗");
+    await fetchRecords();
+    setEditingKarte(null);
+  };
+
   const playerName = player?.name ?? "";
 
   const historyContent = loadingHistory ? (
@@ -221,6 +234,7 @@ export default function KarteRecordPage() {
               index={karteIndexMap.get(item.data.id) ?? 0}
               onCopyTags={handleCopyTags}
               onCopyTrainingContent={handleCopyTrainingContent}
+              onEdit={setEditingKarte}
             />
           ) : item.type === "medical" ? (
             <MedicalKarteCard
@@ -290,6 +304,7 @@ export default function KarteRecordPage() {
             records={records}
             onCopyTags={handleCopyTags}
             onCopyTrainingContent={handleCopyTrainingContent}
+            onEdit={setEditingKarte}
           />
         </div>
       )}
@@ -476,6 +491,41 @@ export default function KarteRecordPage() {
           {historyPanel}
         </section>
       </main>
+
+      {editingKarte && (
+        <div
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 px-4"
+          onClick={() => setEditingKarte(null)}
+        >
+          <div
+            className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-lg max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
+              <p className="text-sm font-bold text-gray-800">カルテを編集</p>
+              <button
+                onClick={() => setEditingKarte(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 -m-1"
+                aria-label="閉じる"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5">
+              <KarteForm
+                key={editingKarte.id}
+                playerId={playerId}
+                playerName={playerName}
+                record={editingKarte}
+                onSubmit={handleUpdate}
+                onCancel={() => setEditingKarte(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

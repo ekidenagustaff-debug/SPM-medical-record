@@ -3,9 +3,12 @@ export interface KarteRecord {
   playerId?: string;
   clientName: string;
   trainerName: string;
+  location: string;
   chiefComplaint: string;
+  physicalCheck: string;
+  procedureContent: string;
   trainingContent: string;
-  overallAssessment: string;
+  memo: string;
   tags: string[];
   mediaUrls: string[];
   createdAt: string;
@@ -15,9 +18,12 @@ export interface KarteFormData {
   playerId: string;
   clientName: string;
   trainerName: string;
+  location: string;
   chiefComplaint: string;
+  physicalCheck: string;
+  procedureContent: string;
   trainingContent: string;
-  overallAssessment: string;
+  memo: string;
   tags: string[];
   mediaUrls: string[];
 }

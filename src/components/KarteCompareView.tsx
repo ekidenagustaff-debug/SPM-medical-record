@@ -73,14 +73,16 @@ export default function KarteCompareView({ records, onCopyTags, onCopyTrainingCo
   const visibleRows = FIELD_ROWS.filter((row) => records.some((r) => r[row.key]));
   const hasMedia = records.some((r) => r.mediaUrls && r.mediaUrls.length > 0);
 
-  const gridTemplateColumns = `6.5rem repeat(${records.length}, minmax(240px, 300px))`;
+  const gridTemplateColumns = `auto repeat(${records.length}, minmax(240px, 300px))`;
+  const labelCellClass = "w-9 md:w-[6.5rem] shrink-0";
+  const labelTextClass = "[writing-mode:vertical-rl] md:[writing-mode:horizontal-tb] mx-auto md:mx-0";
 
   return (
     <div className="h-full overflow-auto overscroll-contain rounded-xl border border-gray-200 bg-white">
       <div className="grid w-max min-w-full" style={{ gridTemplateColumns }}>
         {/* ヘッダー行（日付・担当・場所・タグ） */}
-        <div className="sticky top-0 left-0 z-30 bg-gray-50 border-b border-r border-gray-200 px-2 py-2">
-          <p className="text-[10px] font-semibold text-gray-400">セッション</p>
+        <div className={`sticky top-0 left-0 z-30 bg-gray-50 border-b border-r border-gray-200 px-1 py-2 md:px-2 ${labelCellClass}`}>
+          <p className={`text-[10px] font-semibold text-gray-400 ${labelTextClass}`}>セッション</p>
         </div>
         {records.map((record, i) => (
           <div
@@ -145,8 +147,8 @@ export default function KarteCompareView({ records, onCopyTags, onCopyTrainingCo
         {/* 項目行 */}
         {visibleRows.map((row) => (
           <div key={row.key} className="contents">
-            <div className="sticky left-0 z-10 bg-gray-50 border-b border-r border-gray-200 px-2 py-2">
-              <p className={`text-[10px] font-semibold leading-tight ${row.labelClass}`}>{row.label}</p>
+            <div className={`sticky left-0 z-10 bg-gray-50 border-b border-r border-gray-200 px-1 py-2 md:px-2 ${labelCellClass}`}>
+              <p className={`text-[10px] font-semibold leading-tight ${row.labelClass} ${labelTextClass}`}>{row.label}</p>
             </div>
             {records.map((record, i) => {
               const value = record[row.key];
@@ -186,8 +188,8 @@ export default function KarteCompareView({ records, onCopyTags, onCopyTrainingCo
         {/* メディア行 */}
         {hasMedia && (
           <div className="contents">
-            <div className="sticky left-0 z-10 bg-gray-50 border-b border-r border-gray-200 px-2 py-2">
-              <p className="text-[10px] font-semibold text-gray-500 leading-tight">メディア</p>
+            <div className={`sticky left-0 z-10 bg-gray-50 border-b border-r border-gray-200 px-1 py-2 md:px-2 ${labelCellClass}`}>
+              <p className={`text-[10px] font-semibold text-gray-500 leading-tight ${labelTextClass}`}>メディア</p>
             </div>
             {records.map((record, i) => (
               <div

@@ -189,7 +189,11 @@ export default function KarteCompareView({ records, onCopyTags, onCopyTrainingCo
                           />
                         </div>
                       )}
-                      <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto overscroll-contain">
+                      <p
+                        className={`text-xs text-gray-600 whitespace-pre-wrap leading-relaxed overflow-y-auto overscroll-contain ${
+                          row.key === "trainingContent" ? "max-h-[40rem]" : "max-h-96"
+                        }`}
+                      >
                         {value}
                       </p>
                     </>

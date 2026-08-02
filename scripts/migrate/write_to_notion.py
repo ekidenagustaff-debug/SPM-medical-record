@@ -60,12 +60,19 @@ def resolve_player_id(client_name: str, players: list[dict[str, str]]) -> tuple[
     return None, close
 
 
-def find_existing_record(database_id: str, player_id: str, treatment_date: str) -> bool:
+def find_existing_record(
+    database_id: str, player_id: str, treatment_date: str, chief_complaint: str
+) -> bool:
+    # 同一選手・同一日に複数件の記録があるケースが実データにあるため(例: 通常セッションと
+    # 別枠での怪我経過報告が同日に別々に書かれている)、日付だけでなく主訴の内容も一致する
+    # 場合のみ「既存の同一レコード」とみなす(再実行時の重複作成防止が目的で、
+    # 同日の別内容レコードまで誤ってスキップしないようにするため)
     body = {
         "filter": {
             "and": [
                 {"property": "部員", "relation": {"contains": player_id}},
                 {"property": "施術日", "date": {"equals": treatment_date}},
+                {"property": "主訴", "rich_text": {"equals": chief_complaint[:2000]}},
             ]
         },
         "page_size": 1,
@@ -157,7 +164,7 @@ def main() -> None:
             errors.append(f"[{i}] 施術日が不明のためスキップ: {record.get('sourceNoteTitle')}")
             continue
 
-        if find_existing_record(database_id, player_id, treatment_date):
+        if find_existing_record(database_id, player_id, treatment_date, record.get("chiefComplaint", "")):
             print(f"  [{i}/{len(records)}] {treatment_date} は既に存在するためスキップ")
             skipped_duplicate += 1
             continue

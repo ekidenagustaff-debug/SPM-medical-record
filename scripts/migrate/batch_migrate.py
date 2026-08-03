@@ -41,28 +41,47 @@ class PersonResult:
     error: str | None = None
 
 
-def find_person_dirs(import_dir: Path) -> list[tuple[str, Path]]:
-    """<import_dir>/<氏名>/<氏名>.html というペアを探す。
+def _find_htmls_excluding_attachment_dirs(sub: Path) -> list[Path]:
+    """sub配下を再帰的に探索して.htmlファイルを集める。
 
-    サブフォルダ名とhtmlファイル名が一致しない場合は、そのフォルダ内で
-    唯一の.htmlファイルを使う(Evernoteのエクスポート時にノートブック名を
-    変えていた場合などに対応するため)。
+    添付ファイル用フォルダ(Evernoteが作る"<氏名> files"フォルダ)の中は
+    対象外にする(写真のみのフォルダで、ノート本体のhtmlは無いはずのため)。
+    """
+    return [h for h in sub.rglob("*.html") if not any(p.name.endswith(" files") for p in h.parents)]
+
+
+def find_person_dirs(import_dir: Path) -> list[tuple[str, Path]]:
+    """<import_dir>/<氏名>/ 以下から、その人のノートのhtmlファイルを1つ探す。
+
+    以下の順で探す(フォルダ名 = sub.name を氏名とみなす):
+      1. <import_dir>/<氏名>/<氏名>.html (基本形)
+      2. <import_dir>/<氏名>/ 以下を再帰的に探索し、ファイル名が<氏名>と一致するもの
+         (zip展開時などに <氏名>/<氏名>/<氏名>.html のように余分な階層が
+         できてしまっているケースに対応)
+      3. 2で見つからなければ、再帰的に見つかった.htmlファイルが1つだけならそれを使う
+         (Evernote側でノートブック名を変えていた場合などに対応)
+    複数該当してどれを使うか判断できない場合はスキップして警告する。
     """
     pairs = []
     for sub in sorted(import_dir.iterdir()):
         if not sub.is_dir():
             continue
-        candidate = sub / f"{sub.name}.html"
-        if candidate.exists():
-            pairs.append((sub.name, candidate))
+
+        direct = sub / f"{sub.name}.html"
+        if direct.exists():
+            pairs.append((sub.name, direct))
             continue
-        htmls = list(sub.glob("*.html"))
-        if len(htmls) == 1:
-            pairs.append((htmls[0].stem, htmls[0]))
-        elif len(htmls) == 0:
+
+        all_htmls = _find_htmls_excluding_attachment_dirs(sub)
+        name_matches = [h for h in all_htmls if h.stem == sub.name]
+        if len(name_matches) == 1:
+            pairs.append((sub.name, name_matches[0]))
+        elif len(all_htmls) == 1:
+            pairs.append((all_htmls[0].stem, all_htmls[0]))
+        elif len(all_htmls) == 0:
             print(f"警告: {sub} に.htmlファイルが見つかりません。スキップします")
         else:
-            print(f"警告: {sub} に.htmlファイルが複数あり、どれを使うか判断できません。スキップします: {[h.name for h in htmls]}")
+            print(f"警告: {sub} に.htmlファイルが複数あり、どれを使うか判断できません。スキップします: {[str(h.relative_to(sub)) for h in all_htmls]}")
     return pairs
 
 

@@ -10,11 +10,21 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
 import requests
+
+# Windows既定のコンソール文字コード(cp932)では表現できないUnicode文字
+# (例: 部首の異体字コードポイントを含む氏名)を含むデータをprintするとクラッシュするため、
+# 標準出力/標準エラー出力をUTF-8(未対応文字は置換)に固定する。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILE = REPO_ROOT / ".env.local"

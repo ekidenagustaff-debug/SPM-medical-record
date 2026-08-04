@@ -40,6 +40,17 @@ def test_resolve_player_no_match_returns_suggestions():
     assert "若林良樹" in suggestions
 
 
+def test_resolve_player_ignores_kangxi_radical_lookalike_characters():
+    # macOSでのエクスポートで、一部の漢字(山/人など)が見た目は同じでもUnicode上は
+    # 「部首(Kangxi Radical)」用の別コードポイントに化けていたケースが実データにあった
+    players = [{"id": "p1", "name": "片山　宗哉"}]
+    kangxi_variant_name = "⽚⼭ 宗哉"  # "⽚⼭ 宗哉" (⽚=U+2F5A, ⼭=U+2F2D)
+    player_id, canonical_name, suggestions = resolve_player(kangxi_variant_name, players)
+    assert player_id == "p1"
+    assert canonical_name == "片山　宗哉"
+    assert suggestions == []
+
+
 def test_sanitize_trainer_name_moves_invalid_value_to_memo():
     valid_trainers = {"中野", "古谷", "木村"}
     record = {"trainerName": "青学MTG　議事録", "memo": "既存のメモ"}
@@ -124,6 +135,7 @@ if __name__ == "__main__":
     test_resolve_player_exact_match()
     test_resolve_player_ignores_whitespace_differences()
     test_resolve_player_no_match_returns_suggestions()
+    test_resolve_player_ignores_kangxi_radical_lookalike_characters()
     test_sanitize_trainer_name_moves_invalid_value_to_memo()
     test_sanitize_trainer_name_leaves_valid_value_untouched()
     test_sanitize_trainer_name_leaves_blank_untouched()

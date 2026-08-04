@@ -4,11 +4,13 @@
 デフォルトはdry-run。実際に書き込むには --commit を付ける。
 
 安全装置:
-  - 選手名(clientName)は空白の有無を無視して「部員」DBの氏名と照合する
-    (エクスポート元のフォルダ名は「中村海斗」でも、登録名が「中村　海斗」のように
-    全角スペース区切りのことがあるため)。マッチした場合、書き込む「クライアント名」は
-    常に部員DB側の正式な登録名に統一する。マッチしない場合は書き込まずスキップし、
-    候補となりそうな名前を提示する(誤った選手に紐付けない)
+  - 選手名(clientName)は空白の有無とUnicode正規化(NFKC)の差を無視して「部員」DBの
+    氏名と照合する(エクスポート元のフォルダ名は「中村海斗」でも登録名が「中村　海斗」
+    のように全角スペース区切りだったり、macOSでのエクスポートで一部の漢字が見た目の
+    同じ「部首」用の別コードポイントに化けていたりするため)。マッチした場合、
+    書き込む「クライアント名」は常に部員DB側の正式な登録名に統一する。
+    マッチしない場合は書き込まずスキップし、候補となりそうな名前を提示する
+    (誤った選手に紐付けない)
   - 担当トレーナー名は、Notion側に既に登録されている選択肢と照合する。
     一致しない値(会議メモ・LINE連絡・複数トレーナー併記など、実際のトレーナー名ではない
     記載が実データに存在した)は自動的にmemoへ退避し、担当トレーナー名は空欄にする
@@ -28,6 +30,7 @@ import difflib
 import json
 import re
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -35,8 +38,15 @@ from common import load_env_file, notion_request, require_env
 
 
 def normalize_name(name: str) -> str:
-    """氏名比較用に空白(半角/全角)を除去する。"""
-    return re.sub(r"[\s　]+", "", name)
+    """氏名比較用に空白(半角/全角)を除去し、Unicode正規化(NFKC)する。
+
+    macOSでエクスポートしたファイル名では、一部の漢字(山/田/白/人など)が
+    見た目は同じでもUnicode上は「部首(Kangxi Radical)」用の別のコードポイントに
+    置き換わっていることがある(例: "⽚⼭" は "片山" と表示上ほぼ区別がつかないが
+    別の文字)。NFKC正規化でこれを通常の漢字に統一してから比較する。
+    """
+    normalized = unicodedata.normalize("NFKC", name)
+    return re.sub(r"[\s　]+", "", normalized)
 
 
 def fetch_valid_trainer_names(database_id: str) -> set[str]:

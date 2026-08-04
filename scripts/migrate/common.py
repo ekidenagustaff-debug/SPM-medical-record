@@ -69,18 +69,31 @@ def notion_headers() -> dict[str, str]:
 def notion_request(
     method: str, path: str, json_body: dict[str, Any] | None = None, max_retries: int = 5
 ) -> dict[str, Any]:
-    """Notion REST APIを叩く。429はRetry-Afterに従って自動リトライする。"""
+    """Notion REST APIを叩く。429はRetry-Afterに従い、それ以外の一時的な接続エラー
+    (タイムアウト・接続切断など、数百人規模の連続実行では実際に発生する)も
+    指数バックオフでリトライする。
+    """
     url = f"{NOTION_API_BASE}{path}"
+    last_error: Exception | None = None
     for attempt in range(max_retries):
-        resp = requests.request(method, url, headers=notion_headers(), json=json_body, timeout=30)
+        try:
+            resp = requests.request(method, url, headers=notion_headers(), json=json_body, timeout=30)
+        except requests.exceptions.RequestException as exc:
+            last_error = exc
+            time.sleep(2 * (attempt + 1))
+            continue
         if resp.status_code == 429:
             wait = float(resp.headers.get("Retry-After", "1"))
             time.sleep(wait)
             continue
+        if resp.status_code >= 500:
+            last_error = RuntimeError(f"Notion API error {resp.status_code} for {method} {path}: {resp.text}")
+            time.sleep(2 * (attempt + 1))
+            continue
         if not resp.ok:
             raise RuntimeError(f"Notion API error {resp.status_code} for {method} {path}: {resp.text}")
         return resp.json()
-    raise RuntimeError(f"Notion API rate limit retries exhausted for {method} {path}")
+    raise RuntimeError(f"Notion APIへのリクエストが{max_retries}回連続で失敗しました for {method} {path}: {last_error}")
 
 
 def anthropic_messages(
@@ -104,11 +117,21 @@ def anthropic_messages(
         "system": system,
         "messages": [{"role": "user", "content": user_content}],
     }
+    last_error: Exception | None = None
     for attempt in range(max_retries):
-        resp = requests.post(url, headers=headers, json=body, timeout=120)
+        try:
+            resp = requests.post(url, headers=headers, json=body, timeout=120)
+        except requests.exceptions.RequestException as exc:
+            last_error = exc
+            time.sleep(2 * (attempt + 1))
+            continue
         if resp.status_code == 429:
             wait = float(resp.headers.get("retry-after", "2")) if resp.headers.get("retry-after") else 2 * (attempt + 1)
             time.sleep(wait)
+            continue
+        if resp.status_code >= 500:
+            last_error = RuntimeError(f"Anthropic API error {resp.status_code}: {resp.text}")
+            time.sleep(2 * (attempt + 1))
             continue
         if not resp.ok:
             raise RuntimeError(f"Anthropic API error {resp.status_code}: {resp.text}")
@@ -116,7 +139,7 @@ def anthropic_messages(
         parts = data.get("content", [])
         text = "".join(p.get("text", "") for p in parts if p.get("type") == "text")
         return text
-    raise RuntimeError("Anthropic API rate limit retries exhausted")
+    raise RuntimeError(f"Anthropic APIへのリクエストが{max_retries}回連続で失敗しました: {last_error}")
 
 
 def extract_json_block(text: str) -> Any:

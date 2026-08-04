@@ -86,7 +86,10 @@ def find_person_dirs(import_dir: Path) -> list[tuple[str, Path]]:
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=SCRIPT_DIR, capture_output=True, text=True)
+    # 子プロセス側もUTF-8で出力するよう common.py が標準出力を固定しているため、
+    # 親側の読み取りもUTF-8に合わせる(Windowsの既定エンコーディングcp932とズレて
+    # 文字化け/デコードエラーになるのを防ぐ)
+    return subprocess.run(cmd, cwd=SCRIPT_DIR, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
 def process_person(person: str, html_path: Path, classified_dir: Path, commit: bool) -> PersonResult:

@@ -210,13 +210,41 @@ export async function getKartesByPlayer(playerId: string): Promise<KarteRecord[]
 export async function getRecentKartes(days = 6): Promise<KarteRecord[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const response = await notion.databases.query({
-    database_id: DATABASE_ID,
-    filter: { timestamp: "created_time", created_time: { on_or_after: since.toISOString() } },
-    sorts: [{ timestamp: "created_time", direction: "descending" }],
-    page_size: 50,
-  });
-  return (response.results as PageObjectResponse[]).map(pageToKarte);
+
+  // 表示・並び替えは施術日を優先しているため、対象範囲も「施術日が設定されていれば
+  // それが直近N日以内」「無ければcreated_timeが直近N日以内」で判定する。
+  // created_timeだけで判定すると、過去データの一括移行(施術日は古いがNotionへの
+  // 書き込み自体は今日)で古いカルテが大量に「直近」として紛れ込んでしまうため。
+  // (NotionのフィルターAPIは入れ子のand/or内でproperty条件とtimestamp条件を混在
+  // できないため、2回に分けてクエリして結果をマージする)
+  const [byTreatmentDate, byCreatedTimeFallback] = await Promise.all([
+    notion.databases.query({
+      database_id: DATABASE_ID,
+      filter: {
+        and: [
+          { property: "施術日", date: { is_not_empty: true } },
+          { property: "施術日", date: { on_or_after: since.toISOString().slice(0, 10) } },
+        ],
+      },
+      page_size: 50,
+    }),
+    notion.databases.query({
+      database_id: DATABASE_ID,
+      filter: {
+        and: [
+          { property: "施術日", date: { is_empty: true } },
+          { timestamp: "created_time", created_time: { on_or_after: since.toISOString() } },
+        ],
+      },
+      page_size: 50,
+    }),
+  ]);
+
+  const records = [
+    ...(byTreatmentDate.results as PageObjectResponse[]),
+    ...(byCreatedTimeFallback.results as PageObjectResponse[]),
+  ].map(pageToKarte);
+  return records.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getTrainerOptions(): Promise<string[]> {

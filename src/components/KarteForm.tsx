@@ -73,6 +73,12 @@ const EMPTY = {
   memo: "",
 };
 
+function autoResizeTextarea(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 export default function KarteForm({ playerId, playerName, initialTags, initialTrainingContent, record, onSubmit, onCancel }: KarteFormProps) {
   const isEditing = !!record;
   const [form, setForm] = useState(() =>
@@ -88,6 +94,8 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         }
       : EMPTY
   );
+  const chiefComplaintRef = useRef<HTMLTextAreaElement>(null);
+  const trainingContentRef = useRef<HTMLTextAreaElement>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>(() => record?.tags ?? []);
   const [trainerOptions, setTrainerOptions] = useState<string[]>([]);
   const [locationOptions, setLocationOptions] = useState<string[]>([]);
@@ -124,6 +132,14 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
       setForm((prev) => ({ ...prev, trainingContent: initialTrainingContent }));
     }
   }, [initialTrainingContent]);
+
+  useEffect(() => {
+    autoResizeTextarea(chiefComplaintRef.current);
+  }, [form.chiefComplaint]);
+
+  useEffect(() => {
+    autoResizeTextarea(trainingContentRef.current);
+  }, [form.trainingContent]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -312,12 +328,13 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">主訴</label>
         <textarea
+          ref={chiefComplaintRef}
           name="chiefComplaint"
           value={form.chiefComplaint}
           onChange={handleChange}
-          rows={2}
+          rows={15}
           placeholder="今日の体調や気になる箇所、目標など..."
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none overflow-hidden"
         />
       </div>
 
@@ -357,12 +374,13 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
           トレーニング内容
         </label>
         <textarea
+          ref={trainingContentRef}
           name="trainingContent"
           value={form.trainingContent}
           onChange={handleChange}
-          rows={5}
+          rows={15}
           placeholder="実施したメニュー、セット数、重量、フォームのポイントなど..."
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white resize-none overflow-hidden"
         />
       </div>
 

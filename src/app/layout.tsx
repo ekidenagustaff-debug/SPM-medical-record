@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SPM カルテシステム",
   description: "パーソナルトレーニング記録管理システム",
+  // ホーム画面に追加したときのアイコン・表示名(iOS)
+  appleWebApp: {
+    capable: true,
+    title: "SPMカルテ",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0D0D0D",
 };
 
 export default function RootLayout({

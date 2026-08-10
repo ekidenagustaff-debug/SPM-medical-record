@@ -364,7 +364,11 @@ export default function KarteRecordPage() {
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
         <div className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0">S</div>
         <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
-          <Link href="/" className="hover:text-blue-500 transition-colors shrink-0">選手一覧</Link>
+          {player?.category === "OBOG" ? (
+            <Link href="/obog" className="hover:text-blue-500 transition-colors shrink-0">OB・OG</Link>
+          ) : (
+            <Link href="/" className="hover:text-blue-500 transition-colors shrink-0">選手一覧</Link>
+          )}
           <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>

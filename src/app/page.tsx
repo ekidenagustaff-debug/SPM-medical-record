@@ -76,7 +76,18 @@ export default function PlayerListPage() {
 
   const playersPanel = (
     <div className="min-w-0">
-      <h2 className="text-lg font-bold text-gray-800 mb-4">選手一覧</h2>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-lg font-bold text-gray-800">選手一覧</h2>
+        <Link
+          href="/obog"
+          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 bg-white border border-gray-200 hover:border-blue-300 rounded-full pl-3 pr-2.5 py-1.5 transition-colors shrink-0"
+        >
+          OB・OG
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : error ? (

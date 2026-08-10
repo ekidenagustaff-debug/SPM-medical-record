@@ -33,8 +33,18 @@ export interface PlayerInfo {
   name: string;
   grade?: string;
   gender?: string;
+  /** 部員DBの「区分」（選手 / OBOG / マネージャー / スタッフ） */
+  category?: string;
   karteCount?: number;
   lastKarte?: string | null;
+}
+
+export interface ObogPlayerInfo {
+  id: string;
+  name: string;
+  gender?: string;
+  /** 生年月日から算出した大学入学年（例: 2021） */
+  entranceYear: number;
 }
 
 export interface TeamInfo {

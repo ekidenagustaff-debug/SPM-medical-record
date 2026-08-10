@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client";
-import { KarteRecord, KarteFormData, PlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord, BloodTestRecord, PlayerProfile, PlayerProfileFormData } from "@/types/karte";
+import { KarteRecord, KarteFormData, PlayerInfo, ObogPlayerInfo, TeamInfo, RaceResult, MedicalKarteRecord, BloodTestRecord, PlayerProfile, PlayerProfileFormData } from "@/types/karte";
 import {
   PageObjectResponse,
   DatabaseObjectResponse,
@@ -70,6 +70,10 @@ function extractTags(prop: PageObjectResponse["properties"][string]): string[] {
   return [];
 }
 
+function extractDate(prop: PageObjectResponse["properties"][string] | undefined): string {
+  return prop?.type === "date" && prop.date?.start ? prop.date.start.slice(0, 10) : "";
+}
+
 function extractFiles(prop: PageObjectResponse["properties"][string]): string[] {
   if (prop.type === "files") {
     return prop.files.flatMap((f) => {
@@ -128,6 +132,57 @@ export async function getPlayers(): Promise<PlayerInfo[]> {
   });
 }
 
+/**
+ * 生年月日から大学入学年を算出する。
+ *
+ * 日本の学年は「4月2日〜翌4月1日生まれ」が同学年で、その代は生まれた年度 + 18年目の
+ * 4月に大学へ入学する。部員DBのOBOGは月日が不明なため「その代の4月1日」を便宜的な
+ * 生年月日として登録している運用なので、4月1日はその年度の始まり(4月2日相当)として
+ * 扱う。1〜3月生まれ(早生まれ)は前の年度の代になる。
+ */
+export function entranceYearFromBirthday(birthday: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthday);
+  if (!m) return null;
+  const [year, month] = [Number(m[1]), Number(m[2])];
+  const fiscalBirthYear = month >= 4 ? year : year - 1;
+  return fiscalBirthYear + 18;
+}
+
+export async function getObogPlayers(): Promise<ObogPlayerInfo[]> {
+  const players: ObogPlayerInfo[] = [];
+  let cursor: string | undefined;
+  // OBOGは200名超のため1ページ(最大100件)に収まらない。全件取得する。
+  do {
+    const response = await notion.databases.query({
+      database_id: MEMBERS_DATABASE_ID,
+      filter: {
+        and: [
+          { property: "区分", select: { equals: "OBOG" } },
+          { property: "生年月日", date: { is_not_empty: true } },
+        ],
+      },
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    for (const page of response.results as PageObjectResponse[]) {
+      const p = page.properties;
+      const entranceYear = entranceYearFromBirthday(extractDate(p["生年月日"]));
+      if (entranceYear === null) continue;
+      players.push({
+        id: page.id,
+        name: extractText(p["氏名"]),
+        gender: p["性別"] ? extractText(p["性別"]) || undefined : undefined,
+        entranceYear,
+      });
+    }
+    cursor = response.has_more ? (response.next_cursor ?? undefined) : undefined;
+  } while (cursor);
+
+  return players.sort(
+    (a, b) => b.entranceYear - a.entranceYear || a.name.localeCompare(b.name, "ja")
+  );
+}
+
 export async function getPlayerById(playerId: string): Promise<PlayerInfo | null> {
   try {
     const page = (await notion.pages.retrieve({ page_id: playerId })) as PageObjectResponse;
@@ -137,6 +192,7 @@ export async function getPlayerById(playerId: string): Promise<PlayerInfo | null
       name: extractText(p["氏名"]),
       grade: p["学年"] ? extractText(p["学年"]) || undefined : undefined,
       gender: p["性別"] ? extractText(p["性別"]) || undefined : undefined,
+      category: p["区分"] ? extractText(p["区分"]) || undefined : undefined,
     };
   } catch {
     return null;

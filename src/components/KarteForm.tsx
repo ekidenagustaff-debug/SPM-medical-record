@@ -63,15 +63,22 @@ async function compressImage(file: File): Promise<File> {
   });
 }
 
-const EMPTY = {
-  trainerName: "",
-  location: "",
-  chiefComplaint: "",
-  physicalCheck: "",
-  procedureContent: "",
-  trainingContent: "",
-  memo: "",
-};
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function emptyForm() {
+  return {
+    treatmentDate: today(),
+    trainerName: "",
+    location: "",
+    chiefComplaint: "",
+    physicalCheck: "",
+    procedureContent: "",
+    trainingContent: "",
+    memo: "",
+  };
+}
 
 function autoResizeTextarea(el: HTMLTextAreaElement | null) {
   if (!el) return;
@@ -84,6 +91,8 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
   const [form, setForm] = useState(() =>
     record
       ? {
+          // 表示と同じく施術日を優先（未設定の記録は記録日時にフォールバックしている）
+          treatmentDate: record.createdAt.slice(0, 10),
           trainerName: record.trainerName,
           location: record.location,
           chiefComplaint: record.chiefComplaint,
@@ -92,7 +101,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
           trainingContent: record.trainingContent,
           memo: record.memo,
         }
-      : EMPTY
+      : emptyForm()
   );
   const chiefComplaintRef = useRef<HTMLTextAreaElement>(null);
   const trainingContentRef = useRef<HTMLTextAreaElement>(null);
@@ -216,7 +225,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.trainerName.trim()) return;
+    if (!form.trainerName.trim() || !form.treatmentDate) return;
     if (mediaItems.some((m) => m.uploading)) {
       setError("アップロード中のファイルがあります。完了をお待ちください。");
       return;
@@ -232,7 +241,7 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
         mediaUrls: mediaItems.filter((m) => m.url && !m.error).map((m) => m.url!),
       });
       if (isEditing) return;
-      setForm(EMPTY);
+      setForm(emptyForm());
       setSelectedTags([]);
       setMediaItems([]);
       setSubmitted(true);
@@ -248,6 +257,21 @@ export default function KarteForm({ playerId, playerName, initialTags, initialTr
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
+      {/* 施術日 */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          施術日 <span className="text-red-400">*</span>
+        </label>
+        <input
+          type="date"
+          name="treatmentDate"
+          value={form.treatmentDate}
+          onChange={handleChange}
+          required
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white text-gray-800"
+        />
+      </div>
+
       {/* 担当トレーナー名 */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">

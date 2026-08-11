@@ -26,6 +26,8 @@ export interface KarteFormData {
   memo: string;
   tags: string[];
   mediaUrls: string[];
+  /** 施術日 "YYYY-MM-DD" */
+  treatmentDate: string;
 }
 
 export interface PlayerInfo {

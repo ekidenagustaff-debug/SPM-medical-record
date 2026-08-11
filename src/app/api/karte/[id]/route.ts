@@ -20,6 +20,7 @@ export async function PUT(
       memo,
       tags,
       mediaUrls,
+      treatmentDate,
     } = body;
 
     if (!clientName?.trim() || !trainerName?.trim()) {
@@ -41,6 +42,7 @@ export async function PUT(
       memo: memo ?? "",
       tags: Array.isArray(tags) ? tags : [],
       mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
+      treatmentDate: treatmentDate || "",
     });
 
     return NextResponse.json(record);

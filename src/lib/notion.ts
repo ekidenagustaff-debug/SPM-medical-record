@@ -219,6 +219,7 @@ export async function createKarteRecord(data: KarteFormData): Promise<KarteRecor
           external: { url },
         })),
       },
+      "施術日": data.treatmentDate ? { date: { start: data.treatmentDate } } : { date: null },
       "部員": { relation: [{ id: data.playerId }] },
     },
   })) as PageObjectResponse;
@@ -245,6 +246,7 @@ export async function updateKarteRecord(id: string, data: KarteFormData): Promis
           external: { url },
         })),
       },
+      "施術日": data.treatmentDate ? { date: { start: data.treatmentDate } } : { date: null },
     },
   })) as PageObjectResponse;
   return pageToKarte(response);

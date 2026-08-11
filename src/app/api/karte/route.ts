@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       memo,
       tags,
       mediaUrls,
+      treatmentDate,
     } = body;
 
     if (!playerId?.trim() || !clientName?.trim() || !trainerName?.trim()) {
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest) {
       memo: memo ?? "",
       tags: Array.isArray(tags) ? tags : [],
       mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
+      // 未指定なら今日の日付で作成する(従来の記録日時と同じ挙動)
+      treatmentDate: treatmentDate || new Date().toISOString().slice(0, 10),
     });
 
     return NextResponse.json(record, { status: 201 });
